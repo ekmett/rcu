@@ -16,6 +16,7 @@ synopsis:      STM-based Read-Copy-Update
 description:   STM-based Read-Copy-Update
 
 extra-source-files:
+  examples/*.hs
   CHANGELOG.markdown
   README.markdown
 
