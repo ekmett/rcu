@@ -12,8 +12,8 @@ bug-reports:   http://github.com/ekmett/rcu/issues
 copyright:     Copyright (C) 2015 Edward A. Kmett
 build-type:    Custom
 tested-with:   GHC == 7.10.1, GHC == 7.10.2
-synopsis:      Read-Copy-Update with Quiescent-State-Based Reclamation
-description:   Read-Copy-Update with Quiescent-State-Based Reclamation
+synopsis:      STM-based Read-Copy-Update
+description:   STM-based Read-Copy-Update
 
 extra-source-files:
   CHANGELOG.markdown
@@ -40,9 +40,9 @@ library
     transformers >= 0.4 && < 0.5
 
   exposed-modules:
-    Control.Monad.RCU
-    Control.Monad.RCU.Class
-    Control.Monad.RCU.Internal
+    Control.Concurrent.RCU
+    Control.Concurrent.RCU.Class
+    Control.Concurrent.RCU.Internal
 
   ghc-options: -Wall -fwarn-tabs
 

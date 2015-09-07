@@ -6,7 +6,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | STM-based RCU with concurrent writers
-module Control.Monad.RCU.Internal
+module Control.Concurrent.RCU.Internal
   ( RCURef(..)
   , RCUThread(..)
   , RCU(..)
@@ -17,10 +17,10 @@ module Control.Monad.RCU.Internal
 
 import Control.Applicative
 import Control.Concurrent
+import Control.Concurrent.RCU.Class
 import Control.Concurrent.STM
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.RCU.Class
 import Data.Coerce
 import Data.Int
 

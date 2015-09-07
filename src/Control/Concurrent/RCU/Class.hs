@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DefaultSignatures #-}
 
-module Control.Monad.RCU.Class
+module Control.Concurrent.RCU.Class
   ( MonadNew(..)
   , MonadRead(..)
   , MonadWrite(..)
