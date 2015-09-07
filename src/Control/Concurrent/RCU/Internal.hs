@@ -106,7 +106,7 @@ instance MonadNew (RCU s) where
   newRef a = RCU $ \_ -> RCURef <$> newTVarIO a
 
 -- | For now we don't bother to hold onto the thread id
-newtype RCUThread s a = RCUThread { runRCUThread :: MVar a }
+data RCUThread s a = RCUThread {-# UNPACK #-} !ThreadId {-# UNPACK #-} !(MVar a)
 
 instance MonadRCU (RCU s) where
   type ReadT (RCU s) = R s
@@ -114,11 +114,11 @@ instance MonadRCU (RCU s) where
   type Thread (RCU s) = RCUThread s
   fork (RCU m) = RCU $ \ c -> do
     result <- newEmptyMVar 
-    _ <- forkIO $ do
+    tid <- forkIO $ do
       x <- m c 
       putMVar result x
-    return (RCUThread result)
-  join (RCUThread m) = RCU $ \ _ -> readMVar m
+    return (RCUThread tid result)
+  join (RCUThread _ m) = RCU $ \ _ -> readMVar m
   read (R m) = RCU $ \ _ -> m
   write (W m) = RCU $ \ c -> atomically $ do
     _ <- readTVar c -- deliberately incur a data dependency!
