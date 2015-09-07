@@ -1,3 +1,4 @@
+{-# LANGUAGE Trustworthy #-}
 module Control.Concurrent.RCU
   ( SRef
   , RCU
