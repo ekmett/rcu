@@ -1,5 +1,6 @@
 module Control.Concurrent.RCU.Class
-  ( MonadNew(..)
+  ( SRef
+  , MonadNew(..)
   , MonadReading(..)
   , MonadWriting(..)
   , MonadRCU(..)
