@@ -51,6 +51,7 @@ import qualified Control.Monad.Trans.Writer.Strict as Strict
 --------------------------------------------------------------------------------
 
 newtype SRef s a = SRef { unSRef :: TVar a }
+  deriving Eq
 
 --------------------------------------------------------------------------------
 -- * MonadNew
@@ -224,6 +225,7 @@ instance MonadReading s (R s) where
 -- * Write-Side Critical Sections
 --------------------------------------------------------------------------------
 
+-- TODO: TVar# RealWorld Int64 -> STM a
 newtype W s a = W { runW :: TVar Int64 -> STM a }
   deriving Functor
 
@@ -260,6 +262,7 @@ instance MonadWriting s (W s) where
 -- * RCU Context
 --------------------------------------------------------------------------------
 
+-- TODO: TVar# RealWorld Int64 -> IO a
 newtype RCU s a = RCU { unRCU :: TVar Int64 -> IO a }
   deriving Functor
 
