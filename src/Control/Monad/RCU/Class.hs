@@ -3,7 +3,8 @@
 {-# LANGUAGE DefaultSignatures #-}
 
 module Control.Monad.RCU.Class
-  ( MonadRead(..)
+  ( MonadNew(..)
+  , MonadRead(..)
   , MonadWrite(..)
   , MonadRCU(..)
   ) where
@@ -21,47 +22,59 @@ import qualified Control.Monad.Trans.Writer.Lazy as Lazy
 import qualified Control.Monad.Trans.Writer.Strict as Strict
 import Prelude hiding (read)
 
--- | This is a read-side critical section
-class Monad m => MonadRead m where
+class Monad m => MonadNew m where
   type Ref m :: * -> *
 
   newRef :: a -> m (Ref m a)
-  default newRef :: (m ~ t n, MonadTrans t, MonadRead n, Ref n ~ Ref m) => a -> m (Ref m a)
+  default newRef :: (m ~ t n, MonadTrans t, MonadNew n, Ref n ~ Ref m) => a -> m (Ref m a)
   newRef a = lift (newRef a)
 
+instance MonadNew m => MonadNew (ReaderT e m) where
+  type Ref (ReaderT e m) = Ref m
+
+instance (MonadNew m, Monoid w) => MonadNew (Strict.WriterT w m) where
+  type Ref (Strict.WriterT w m) = Ref m
+
+instance (MonadNew m, Monoid w) => MonadNew (Lazy.WriterT w m) where
+  type Ref (Lazy.WriterT w m) = Ref m
+
+instance MonadNew m => MonadNew (Strict.StateT s m) where
+  type Ref (Strict.StateT s m) = Ref m
+
+instance MonadNew m => MonadNew (Lazy.StateT s m) where
+  type Ref (Lazy.StateT s m) = Ref m
+
+instance (MonadNew m, Monoid w) => MonadNew (Strict.RWST r w s m) where
+  type Ref (Strict.RWST r w s m) = Ref m
+
+instance (MonadNew m, Monoid w) => MonadNew (Lazy.RWST r w s m) where
+  type Ref (Lazy.RWST r w s m) = Ref m
+
+instance MonadNew m => MonadNew (ExceptT e m) where
+  type Ref (ExceptT e m) = Ref m
+
+instance MonadNew m => MonadNew (MaybeT m) where
+  type Ref (MaybeT m) = Ref m
+
+instance MonadNew m => MonadNew (IdentityT m) where
+  type Ref (IdentityT m) = Ref m
+
+-- | This is a read-side critical section
+class MonadNew m => MonadRead m where
   readRef :: Ref m a -> m a
   default readRef :: (m ~ t n, MonadTrans t, MonadRead n, Ref n ~ Ref m) => Ref m a -> m a
   readRef r = lift (readRef r)
 
-instance MonadRead m => MonadRead (ReaderT e m) where
-  type Ref (ReaderT e m) = Ref m
-
-instance (MonadRead m, Monoid w) => MonadRead (Strict.WriterT w m) where
-  type Ref (Strict.WriterT w m) = Ref m
-
-instance (MonadRead m, Monoid w) => MonadRead (Lazy.WriterT w m) where
-  type Ref (Lazy.WriterT w m) = Ref m
-
-instance MonadRead m => MonadRead (Strict.StateT s m) where
-  type Ref (Strict.StateT s m) = Ref m
-
-instance MonadRead m => MonadRead (Lazy.StateT s m) where
-  type Ref (Lazy.StateT s m) = Ref m
-
-instance (MonadRead m, Monoid w) => MonadRead (Strict.RWST r w s m) where
-  type Ref (Strict.RWST r w s m) = Ref m
-
-instance (MonadRead m, Monoid w) => MonadRead (Lazy.RWST r w s m) where
-  type Ref (Lazy.RWST r w s m) = Ref m
-
-instance MonadRead m => MonadRead (ExceptT e m) where
-  type Ref (ExceptT e m) = Ref m
-
-instance MonadRead m => MonadRead (MaybeT m) where
-  type Ref (MaybeT m) = Ref m
-
-instance MonadRead m => MonadRead (IdentityT m) where
-  type Ref (IdentityT m) = Ref m
+instance MonadRead m => MonadRead (ReaderT e m)
+instance (MonadRead m, Monoid w) => MonadRead (Strict.WriterT w m)
+instance (MonadRead m, Monoid w) => MonadRead (Lazy.WriterT w m)
+instance MonadRead m => MonadRead (Strict.StateT s m)
+instance MonadRead m => MonadRead (Lazy.StateT s m)
+instance (MonadRead m, Monoid w) => MonadRead (Strict.RWST r w s m)
+instance (MonadRead m, Monoid w) => MonadRead (Lazy.RWST r w s m)
+instance MonadRead m => MonadRead (ExceptT e m)
+instance MonadRead m => MonadRead (MaybeT m)
+instance MonadRead m => MonadRead (IdentityT m)
 
 -- | This is a write-side critical section
 class MonadRead m => MonadWrite m where
@@ -85,7 +98,7 @@ instance MonadWrite m => MonadWrite (ExceptT e m)
 instance MonadWrite m => MonadWrite (MaybeT m)
 
 -- | This is the executor service that can fork, join and execute critical sections.
-class (MonadRead (ReadT m), MonadWrite (WriteT m), Monad m) => MonadRCU m where
+class (MonadRead (ReadT m), MonadWrite (WriteT m), MonadNew m) => MonadRCU m where
   type ReadT m :: * -> *
   type WriteT m :: * -> *
   type Thread m :: * -> *
