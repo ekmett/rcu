@@ -1,10 +1,14 @@
 module Control.Concurrent.RCU
-  ( RCU
+  ( SRef
+  , RCU
   , runRCU
   , MonadNew(..)
-  , MonadRead(..)
-  , MonadWrite(..)
+  , MonadReading(..)
+  , MonadWriting(..)
+  , MonadRCU(..)
+  , R
+  , W
+  , RCUThread(rcuThreadId)
   ) where
 
-import Control.Concurrent.RCU.Class
 import Control.Concurrent.RCU.Internal
