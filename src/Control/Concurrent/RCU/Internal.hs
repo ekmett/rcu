@@ -18,8 +18,8 @@ module Control.Concurrent.RCU.Internal
   , RCUThread(..)
   , RCU(..)
   , runRCU
-  , R(..)
-  , W(..)
+  , ReadingRCU(..)
+  , WritingRCU(..)
   , MonadNew(..)
   , MonadReading(..)
   , MonadWriting(..)
@@ -82,6 +82,7 @@ class MonadNew s m => MonadReading s m | m -> s where
   readSRef :: SRef s a -> m a
   default readSRef :: (m ~ t n, MonadTrans t, MonadReading s n) => SRef s a -> m a
   readSRef r = lift (readSRef r)
+  {-# INLINE readSRef #-}
 
 instance MonadReading s m => MonadReading s (ReaderT e m)
 instance (MonadReading s m, Monoid w) => MonadReading s (Strict.WriterT w m)
@@ -159,6 +160,10 @@ instance MonadRCU s m => MonadRCU s (ReaderT e m) where
   joining = lift . joining
   reading (ReaderT f) = ReaderT $ \a -> reading (f a)
   writing (ReaderT f) = ReaderT $ \a -> writing (f a)
+  {-# INLINE forking #-}
+  {-# INLINE joining #-}
+  {-# INLINE reading #-}
+  {-# INLINE writing #-}
 
 instance MonadRCU s m => MonadRCU s (IdentityT m) where
   type Reading (IdentityT m) = Reading m
@@ -168,6 +173,10 @@ instance MonadRCU s m => MonadRCU s (IdentityT m) where
   joining = lift . joining
   reading m = IdentityT (reading m)
   writing m = IdentityT (writing m)
+  {-# INLINE forking #-}
+  {-# INLINE joining #-}
+  {-# INLINE reading #-}
+  {-# INLINE writing #-}
 
 instance MonadRCU s m => MonadRCU s (ExceptT e m) where
   type Reading (ExceptT e m) = ExceptT e (Reading m)
@@ -177,6 +186,10 @@ instance MonadRCU s m => MonadRCU s (ExceptT e m) where
   joining (ExceptT m) = ExceptT $ joining m
   reading (ExceptT m) = ExceptT $ reading m
   writing (ExceptT m) = ExceptT $ writing m
+  {-# INLINE forking #-}
+  {-# INLINE joining #-}
+  {-# INLINE reading #-}
+  {-# INLINE writing #-}
 
 instance MonadRCU s m => MonadRCU s (MaybeT m) where
   type Reading (MaybeT m) = MaybeT (Reading m)
@@ -186,6 +199,10 @@ instance MonadRCU s m => MonadRCU s (MaybeT m) where
   joining (MaybeT m) = MaybeT $ joining m
   reading (MaybeT m) = MaybeT $ reading m
   writing (MaybeT m) = MaybeT $ writing m
+  {-# INLINE forking #-}
+  {-# INLINE joining #-}
+  {-# INLINE reading #-}
+  {-# INLINE writing #-}
 
 instance (MonadRCU s m, Monoid e) => MonadRCU s (Strict.WriterT e m) where
   type Reading (Strict.WriterT e m) = Strict.WriterT e (Reading m)
@@ -195,6 +212,10 @@ instance (MonadRCU s m, Monoid e) => MonadRCU s (Strict.WriterT e m) where
   joining (Strict.WriterT m) = Strict.WriterT $ joining m
   reading (Strict.WriterT m) = Strict.WriterT $ reading m
   writing (Strict.WriterT m) = Strict.WriterT $ writing m
+  {-# INLINE forking #-}
+  {-# INLINE joining #-}
+  {-# INLINE reading #-}
+  {-# INLINE writing #-}
 
 instance (MonadRCU s m, Monoid e) => MonadRCU s (Lazy.WriterT e m) where
   type Reading (Lazy.WriterT e m) = Lazy.WriterT e (Reading m)
@@ -204,59 +225,65 @@ instance (MonadRCU s m, Monoid e) => MonadRCU s (Lazy.WriterT e m) where
   joining (Lazy.WriterT m) = Lazy.WriterT $ joining m
   reading (Lazy.WriterT m) = Lazy.WriterT $ reading m
   writing (Lazy.WriterT m) = Lazy.WriterT $ writing m
+  {-# INLINE forking #-}
+  {-# INLINE joining #-}
+  {-# INLINE reading #-}
+  {-# INLINE writing #-}
 
 --------------------------------------------------------------------------------
 -- * Read-Side Critical Sections
 --------------------------------------------------------------------------------
 
-newtype R s a = R { runR :: IO a } deriving (Functor, Applicative, Monad)
+newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: IO a } deriving (Functor, Applicative, Monad)
 
-instance MonadNew s (R s) where
+instance MonadNew s (ReadingRCU s) where
   newSRef = r where
-    r :: forall a. a -> R s (SRef s a)
+    r :: forall a. a -> ReadingRCU s (SRef s a)
     r = coerce (newTVarIO :: a -> IO (TVar a))
 
-instance MonadReading s (R s) where
+instance MonadReading s (ReadingRCU s) where
   readSRef = r where
-    r :: forall a. SRef s a -> R s a
+    r :: forall a. SRef s a -> ReadingRCU s a
     r = coerce (readTVarIO :: TVar a -> IO a)
+  {-# INLINE readSRef #-}
 
 --------------------------------------------------------------------------------
 -- * Write-Side Critical Sections
 --------------------------------------------------------------------------------
 
 -- TODO: TVar# RealWorld Int64 -> STM a
-newtype W s a = W { runW :: TVar Int64 -> STM a }
+newtype WritingRCU s a = WritingRCU { runWritingRCU :: TVar Int64 -> STM a }
   deriving Functor
 
-instance Applicative (W s) where
-  pure a = W $ \ _ -> pure a
-  W mf <*> W ma = W $ \c -> mf c <*> ma c
+instance Applicative (WritingRCU s) where
+  pure a = WritingRCU $ \ _ -> pure a
+  WritingRCU mf <*> WritingRCU ma = WritingRCU $ \c -> mf c <*> ma c
 
-instance Monad (W s) where
-  return a = W $ \ _ -> pure a
-  W m >>= f = W $ \ c -> do
+instance Monad (WritingRCU s) where
+  return a = WritingRCU $ \ _ -> pure a
+  WritingRCU m >>= f = WritingRCU $ \ c -> do
     a <- m c
-    runW (f a) c
-  fail s = W $ \ _ -> fail s
+    runWritingRCU (f a) c
+  fail s = WritingRCU $ \ _ -> fail s
 
-instance Alternative (W s) where
-  empty = W $ \ _ -> empty
-  W ma <|> W mb = W $ \c -> ma c <|> mb c
+instance Alternative (WritingRCU s) where
+  empty = WritingRCU $ \ _ -> empty
+  WritingRCU ma <|> WritingRCU mb = WritingRCU $ \c -> ma c <|> mb c
 
-instance MonadPlus (W s) where
-  mzero = W $ \ _ -> mzero
-  W ma `mplus` W mb = W $ \c -> ma c `mplus` mb c
+instance MonadPlus (WritingRCU s) where
+  mzero = WritingRCU $ \ _ -> mzero
+  WritingRCU ma `mplus` WritingRCU mb = WritingRCU $ \c -> ma c `mplus` mb c
 
-instance MonadNew s (W s) where
-  newSRef a = W $ \_ -> SRef <$> newTVar a
+instance MonadNew s (WritingRCU s) where
+  newSRef a = WritingRCU $ \_ -> SRef <$> newTVar a
 
-instance MonadReading s (W s) where
-  readSRef (SRef r) = W $ \ _ -> readTVar r
+instance MonadReading s (WritingRCU s) where
+  readSRef (SRef r) = WritingRCU $ \ _ -> readTVar r
+  {-# INLINE readSRef #-}
 
-instance MonadWriting s (W s) where
-  writeSRef (SRef r) a = W $ \ _ -> writeTVar r a
-  synchronize = W $ \ c -> modifyTVar' c (+1)
+instance MonadWriting s (WritingRCU s) where
+  writeSRef (SRef r) a = WritingRCU $ \ _ -> writeTVar r a
+  synchronize = WritingRCU $ \ c -> modifyTVar' c (+1)
 
 --------------------------------------------------------------------------------
 -- * RCU Context
@@ -286,8 +313,8 @@ data RCUThread s a = RCUThread
   }
 
 instance MonadRCU s (RCU s) where
-  type Reading (RCU s) = R s
-  type Writing (RCU s) = W s
+  type Reading (RCU s) = ReadingRCU s
+  type Writing (RCU s) = WritingRCU s
   type Thread (RCU s) = RCUThread s
   forking (RCU m) = RCU $ \ c -> do
     result <- newEmptyMVar
@@ -296,15 +323,21 @@ instance MonadRCU s (RCU s) where
       putMVar result x
     return (RCUThread tid result)
   joining (RCUThread _ m) = RCU $ \ _ -> readMVar m
-  reading (R m) = RCU $ \ _ -> m
-  writing (W m) = RCU $ \ c -> atomically $ do
+  reading (ReadingRCU m) = RCU $ \ _ -> m
+  writing (WritingRCU m) = RCU $ \ c -> atomically $ do
     _ <- readTVar c -- deliberately incur a data dependency!
     m c
+  {-# INLINE forking #-}
+  {-# INLINE joining #-}
+  {-# INLINE reading #-}
+  {-# INLINE writing #-}
 
 instance MonadIO (RCU s) where
   liftIO m = RCU $ \ _ -> m
+  {-# INLINE liftIO #-}
 
 runRCU :: (forall s. RCU s a) -> IO a
 runRCU m = do
   c <- newTVarIO 0
   unRCU m c
+{-# INLINE runRCU #-}

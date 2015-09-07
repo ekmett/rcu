@@ -6,8 +6,8 @@ module Control.Concurrent.RCU
   , MonadReading(..)
   , MonadWriting(..)
   , MonadRCU(..)
-  , R
-  , W
+  , ReadingRCU
+  , WritingRCU
   , RCUThread(rcuThreadId)
   ) where
 

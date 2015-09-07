@@ -8,17 +8,17 @@ import Prelude hiding (read)
 
 data List s a = Nil | Cons a (SRef s (List s a))
 
-snapshot :: Int -> List s Int -> R s Int
+snapshot :: Int -> List s Int -> ReadingRCU s Int
 snapshot acc Nil         = return acc
 snapshot acc (Cons x rn) = snapshot (x + acc) =<< readSRef rn
 
-reader :: Int -> Int -> SRef s (List s Int) -> R s Int
+reader :: Int -> Int -> SRef s (List s Int) -> ReadingRCU s Int
 reader 0 acc _    = return acc
 reader n acc head = do
   acc' <- snapshot acc =<< readSRef head
   reader (n - 1) acc' head
 
-deleteMiddle :: SRef s (List s a) -> W s ()
+deleteMiddle :: SRef s (List s a) -> WritingRCU s ()
 deleteMiddle rl = do
   Cons a rn <- readSRef rl
   Cons _ rm <- readSRef rn
