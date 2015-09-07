@@ -11,8 +11,16 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_HADDOCK not-home #-}
-
--- | STM-based RCU with concurrent writers
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2015 Edward Kmett
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+-- Stability   :  experimental
+-- Portability :  non-portable
+--
+-- STM-based RCU with concurrent writers
+-----------------------------------------------------------------------------
 module Control.Concurrent.RCU.Internal
   ( SRef(..)
   , RCUThread(..)
