@@ -1,5 +1,3 @@
-module ListInt where
-
 import Control.Concurrent.MVar (takeMVar)
 import Control.Concurrent.RCU
 import Control.Monad (forM, forM_, replicateM)
