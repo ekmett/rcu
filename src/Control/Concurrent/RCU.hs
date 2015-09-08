@@ -10,12 +10,12 @@
 -----------------------------------------------------------------------------
 module Control.Concurrent.RCU
   ( SRef
-  , RCU
-  , runRCU
+  , RCU, runRCU
   , MonadNew(..)
   , MonadReading(..)
   , MonadWriting(..)
   , MonadRCU(..)
+  -- * Implementation Details
   , ReadingRCU
   , WritingRCU
   , RCUThread(rcuThreadId)

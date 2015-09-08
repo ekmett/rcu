@@ -59,6 +59,7 @@ import qualified Control.Monad.Trans.Writer.Strict as Strict
 -- * Shared References
 --------------------------------------------------------------------------------
 
+-- | Shared references
 newtype SRef s a = SRef { unSRef :: TVar a }
   deriving Eq
 
@@ -67,6 +68,7 @@ newtype SRef s a = SRef { unSRef :: TVar a }
 --------------------------------------------------------------------------------
 
 class Monad m => MonadNew s m | m -> s where
+  -- | Build a new shared reference
   newSRef :: a -> m (SRef s a)
   default newSRef :: (m ~ t n, MonadTrans t, MonadNew s n) => a -> m (SRef s a)
   newSRef a = lift (newSRef a)
@@ -88,11 +90,13 @@ instance MonadNew s m => MonadNew s (IdentityT m)
 
 -- | This is a read-side critical section
 class MonadNew s m => MonadReading s m | m -> s where
+  -- | Read a shared reference.
   readSRef :: SRef s a -> m a
   default readSRef :: (m ~ t n, MonadTrans t, MonadReading s n) => SRef s a -> m a
   readSRef r = lift (readSRef r)
   {-# INLINE readSRef #-}
 
+-- | Copy a shared reference.
 copySRef :: MonadReading s m => SRef s a -> m (SRef s a)
 copySRef r = do
   a <- readSRef r
@@ -116,10 +120,15 @@ instance MonadReading s m => MonadReading s (IdentityT m)
 
 -- | This is a write-side critical section
 class MonadReading s m => MonadWriting s m | m -> s where
+  -- | Write to a shared reference.
   writeSRef :: SRef s a -> a -> m ()
   default writeSRef :: (m ~ t n, MonadTrans t, MonadWriting s n) => SRef s a -> a -> m ()
   writeSRef r a = lift (writeSRef r a)
 
+  -- | Synchronize with other writers.
+  --
+  -- No other writer can straddle this time bound. It will either see writes from before, or writes after, but never 
+  -- some of both!
   synchronize :: m ()
   default synchronize :: (m ~ t n, MonadTrans t, MonadWriting s n) => m ()
   synchronize = lift synchronize
@@ -146,13 +155,13 @@ class
   , MonadNew s m
   ) => MonadRCU s m | m -> s where
 
-  -- | a read-side critical section
+  -- | A read-side critical section
   type Reading m :: * -> *
 
-  -- | a write-side critical section
+  -- | A write-side critical section
   type Writing m :: * -> *
 
-  -- | threads we can fork and join
+  -- | Threads we can fork and join
   type Thread m :: * -> *
 
   -- | Fork a thread
@@ -161,10 +170,10 @@ class
   -- | Join a thread
   joining  :: Thread m a -> m a
 
-  -- | run a read-side critical section
+  -- | Run a read-side critical section
   reading :: Reading m a -> m a
 
-  -- | run a write-side critical section
+  -- | Run a write-side critical section
   writing :: Writing m a -> m a
 
 instance MonadRCU s m => MonadRCU s (ReaderT e m) where
@@ -249,6 +258,7 @@ instance (MonadRCU s m, Monoid e) => MonadRCU s (Lazy.WriterT e m) where
 -- * Read-Side Critical Sections
 --------------------------------------------------------------------------------
 
+-- | This is the basic read-side critical section for an RCU computation
 newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: IO a } deriving (Functor, Applicative, Monad)
 
 instance MonadNew s (ReadingRCU s) where
@@ -266,7 +276,7 @@ instance MonadReading s (ReadingRCU s) where
 -- * Write-Side Critical Sections
 --------------------------------------------------------------------------------
 
--- TODO: TVar# RealWorld Int64 -> STM a
+-- | This is the basic write-side critical section for an RCU computation
 newtype WritingRCU s a = WritingRCU { runWritingRCU :: TVar Int64 -> STM a }
   deriving Functor
 
@@ -304,7 +314,10 @@ instance MonadWriting s (WritingRCU s) where
 -- * RCU Context
 --------------------------------------------------------------------------------
 
--- TODO: TVar# RealWorld Int64 -> IO a
+-- | This is an RCU computation. It can use 'forking' and 'joining' to form
+-- new threads, and then you can use 'reading' and 'writing' to run classic
+-- read-side and write-side RCU computations. Contention between multiple
+-- write-side computations is managed by STM.
 newtype RCU s a = RCU { unRCU :: TVar Int64 -> IO a }
   deriving Functor
 
@@ -321,7 +334,8 @@ instance Monad (RCU s) where
 instance MonadNew s (RCU s) where
   newSRef a = RCU $ \_ -> SRef <$> newTVarIO a
 
--- | For now we don't bother to hold onto the thread id
+-- | This is a basic 'RCU' thread. It may be embellished when running in a more
+-- exotic context.
 data RCUThread s a = RCUThread
   { rcuThreadId :: {-# UNPACK #-} !ThreadId
   , rcuThreadVar :: {-# UNPACK #-} !(MVar a)
@@ -351,6 +365,7 @@ instance MonadIO (RCU s) where
   liftIO m = RCU $ \ _ -> m
   {-# INLINE liftIO #-}
 
+-- | Run an RCU computation.
 runRCU :: (forall s. RCU s a) -> IO a
 runRCU m = do
   c <- newTVarIO 0
