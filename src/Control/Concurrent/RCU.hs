@@ -21,4 +21,5 @@ module Control.Concurrent.RCU
   , RCUThread(rcuThreadId)
   ) where
 
+import Control.Concurrent.RCU.Class
 import Control.Concurrent.RCU.Internal
