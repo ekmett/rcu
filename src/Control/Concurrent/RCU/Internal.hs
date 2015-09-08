@@ -69,8 +69,8 @@ newtype SRef s a = SRef { unSRef :: TVar a }
 
 class Monad m => MonadNew s m | m -> s where
   -- | Build a new shared reference
-  newSRef :: a -> m (SRef s a)
-  default newSRef :: (m ~ t n, MonadTrans t, MonadNew s n) => a -> m (SRef s a)
+  newSRef :: a -> m (s a)
+  default newSRef :: (m ~ t n, MonadTrans t, MonadNew s n) => a -> m (s a)
   newSRef a = lift (newSRef a)
 
 instance MonadNew s m => MonadNew s (ReaderT e m)
@@ -91,13 +91,13 @@ instance MonadNew s m => MonadNew s (IdentityT m)
 -- | This is a read-side critical section
 class MonadNew s m => MonadReading s m | m -> s where
   -- | Read a shared reference.
-  readSRef :: SRef s a -> m a
-  default readSRef :: (m ~ t n, MonadTrans t, MonadReading s n) => SRef s a -> m a
+  readSRef :: s a -> m a
+  default readSRef :: (m ~ t n, MonadTrans t, MonadReading s n) => s a -> m a
   readSRef r = lift (readSRef r)
   {-# INLINE readSRef #-}
 
 -- | Copy a shared reference.
-copySRef :: MonadReading s m => SRef s a -> m (SRef s a)
+copySRef :: MonadReading s m => s a -> m (s a)
 copySRef r = do
   a <- readSRef r
   newSRef a
@@ -121,8 +121,8 @@ instance MonadReading s m => MonadReading s (IdentityT m)
 -- | This is a write-side critical section
 class MonadReading s m => MonadWriting s m | m -> s where
   -- | Write to a shared reference.
-  writeSRef :: SRef s a -> a -> m ()
-  default writeSRef :: (m ~ t n, MonadTrans t, MonadWriting s n) => SRef s a -> a -> m ()
+  writeSRef :: s a -> a -> m ()
+  default writeSRef :: (m ~ t n, MonadTrans t, MonadWriting s n) => s a -> a -> m ()
   writeSRef r a = lift (writeSRef r a)
 
   -- | Synchronize with other writers.
@@ -136,10 +136,10 @@ class MonadReading s m => MonadWriting s m | m -> s where
 instance MonadWriting s m => MonadWriting s (ReaderT e m)
 instance (MonadWriting s m, Monoid w) => MonadWriting s (Strict.WriterT w m)
 instance (MonadWriting s m, Monoid w) => MonadWriting s (Lazy.WriterT w m)
-instance MonadWriting s m => MonadWriting s (Strict.StateT s m)
-instance MonadWriting s m => MonadWriting s (Lazy.StateT s m)
-instance (MonadWriting s m, Monoid w) => MonadWriting s (Strict.RWST r w s m)
-instance (MonadWriting s m, Monoid w) => MonadWriting s (Lazy.RWST r w s m)
+instance MonadWriting s' m => MonadWriting s' (Strict.StateT s m)
+instance MonadWriting s' m => MonadWriting s' (Lazy.StateT s m)
+instance (MonadWriting s' m, Monoid w) => MonadWriting s' (Strict.RWST r w s m)
+instance (MonadWriting s' m, Monoid w) => MonadWriting s' (Lazy.RWST r w s m)
 instance MonadWriting s m => MonadWriting s (IdentityT m)
 instance MonadWriting s m => MonadWriting s (ExceptT e m)
 instance MonadWriting s m => MonadWriting s (MaybeT m)
@@ -261,12 +261,12 @@ instance (MonadRCU s m, Monoid e) => MonadRCU s (Lazy.WriterT e m) where
 -- | This is the basic read-side critical section for an RCU computation
 newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: IO a } deriving (Functor, Applicative, Monad)
 
-instance MonadNew s (ReadingRCU s) where
+instance MonadNew (SRef s) (ReadingRCU s) where
   newSRef = r where
     r :: forall a. a -> ReadingRCU s (SRef s a)
     r = coerce (newTVarIO :: a -> IO (TVar a))
 
-instance MonadReading s (ReadingRCU s) where
+instance MonadReading (SRef s) (ReadingRCU s) where
   readSRef = r where
     r :: forall a. SRef s a -> ReadingRCU s a
     r = coerce (readTVarIO :: TVar a -> IO a)
@@ -299,14 +299,14 @@ instance MonadPlus (WritingRCU s) where
   mzero = WritingRCU $ \ _ -> mzero
   WritingRCU ma `mplus` WritingRCU mb = WritingRCU $ \c -> ma c `mplus` mb c
 
-instance MonadNew s (WritingRCU s) where
+instance MonadNew (SRef s) (WritingRCU s) where
   newSRef a = WritingRCU $ \_ -> SRef <$> newTVar a
 
-instance MonadReading s (WritingRCU s) where
+instance MonadReading (SRef s) (WritingRCU s) where
   readSRef (SRef r) = WritingRCU $ \ _ -> readTVar r
   {-# INLINE readSRef #-}
 
-instance MonadWriting s (WritingRCU s) where
+instance MonadWriting (SRef s) (WritingRCU s) where
   writeSRef (SRef r) a = WritingRCU $ \ _ -> writeTVar r a
   synchronize = WritingRCU $ \ c -> modifyTVar' c (+1)
 
@@ -331,7 +331,7 @@ instance Monad (RCU s) where
     a <- m s
     unRCU (f a) s
 
-instance MonadNew s (RCU s) where
+instance MonadNew (SRef s) (RCU s) where
   newSRef a = RCU $ \_ -> SRef <$> newTVarIO a
 
 -- | This is a basic 'RCU' thread. It may be embellished when running in a more
@@ -341,7 +341,7 @@ data RCUThread s a = RCUThread
   , rcuThreadVar :: {-# UNPACK #-} !(MVar a)
   }
 
-instance MonadRCU s (RCU s) where
+instance MonadRCU (SRef s) (RCU s) where
   type Reading (RCU s) = ReadingRCU s
   type Writing (RCU s) = WritingRCU s
   type Thread (RCU s) = RCUThread s
