@@ -30,6 +30,7 @@ module Control.Concurrent.RCU.Internal
   , WritingRCU(..)
   , MonadNew(..)
   , MonadReading(..)
+  , copySRef
   , MonadWriting(..)
   , MonadRCU(..)
   ) where
@@ -91,6 +92,12 @@ class MonadNew s m => MonadReading s m | m -> s where
   default readSRef :: (m ~ t n, MonadTrans t, MonadReading s n) => SRef s a -> m a
   readSRef r = lift (readSRef r)
   {-# INLINE readSRef #-}
+
+copySRef :: MonadReading s m => SRef s a -> m (SRef s a)
+copySRef r = do
+  a <- readSRef r
+  newSRef a
+{-# INLINE copySRef #-}
 
 instance MonadReading s m => MonadReading s (ReaderT e m)
 instance (MonadReading s m, Monoid w) => MonadReading s (Strict.WriterT w m)
@@ -349,3 +356,4 @@ runRCU m = do
   c <- newTVarIO 0
   unRCU m c
 {-# INLINE runRCU #-}
+
