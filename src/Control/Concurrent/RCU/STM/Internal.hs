@@ -19,7 +19,7 @@
 --
 -- STM-based RCU with concurrent writers
 -----------------------------------------------------------------------------
-module Control.Concurrent.RCU.Internal
+module Control.Concurrent.RCU.STM.Internal
   ( SRef(..)
   , RCUThread(..)
   , RCU(..)

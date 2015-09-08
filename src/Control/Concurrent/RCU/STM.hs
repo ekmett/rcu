@@ -8,7 +8,7 @@
 -- Portability :  non-portable
 --
 -----------------------------------------------------------------------------
-module Control.Concurrent.RCU
+module Control.Concurrent.RCU.STM
   ( SRef
   , RCU, runRCU
   , MonadNew(..)
@@ -22,4 +22,4 @@ module Control.Concurrent.RCU
   ) where
 
 import Control.Concurrent.RCU.Class
-import Control.Concurrent.RCU.Internal
+import Control.Concurrent.RCU.STM.Internal

@@ -41,9 +41,9 @@ library
     transformers >= 0.4 && < 0.5
 
   exposed-modules:
-    Control.Concurrent.RCU
     Control.Concurrent.RCU.Class
-    Control.Concurrent.RCU.Internal
+    Control.Concurrent.RCU.STM
+    Control.Concurrent.RCU.STM.Internal
 
   ghc-options: -Wall -fwarn-tabs
 
