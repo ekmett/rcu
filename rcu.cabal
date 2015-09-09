@@ -50,6 +50,21 @@ library
   hs-source-dirs: src
   default-language: Haskell2010
 
+executable MoveString 
+  main-is: MoveString.hs
+  build-depends:
+    base >= 4.8 && < 5,
+    stm >= 2.4.4 && < 2.5,
+    transformers >= 0.4 && < 0.5
+  other-modules:
+    Control.Concurrent.RCU.STM
+
+  hs-source-dirs: src, examples
+  ghc-options:
+    -threaded -Wall -fwarn-tabs
+    "-with-rtsopts=-N"
+  default-language: Haskell2010
+
 test-suite doctests
   type:           exitcode-stdio-1.0
   main-is:        doctests.hs
