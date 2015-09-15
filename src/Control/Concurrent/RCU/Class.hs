@@ -11,9 +11,10 @@
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (C) 2015 Edward Kmett
+-- Copyright   :  (C) 2015 Edward Kmett and Ted Cooper
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+--                Ted Cooper <anthezium@gmail.com>
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -143,10 +144,10 @@ class
   type Thread m :: * -> *
 
   -- | Fork a thread
-  forking  :: m a -> m (Thread m a)
+  forking :: m a -> m (Thread m a)
 
   -- | Join a thread
-  joining  :: Thread m a -> m a
+  joining :: Thread m a -> m a
 
   -- | Run a read-side critical section
   reading :: Reading m a -> m a

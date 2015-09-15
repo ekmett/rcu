@@ -9,7 +9,7 @@
 -- Portability :  non-portable
 --
 -----------------------------------------------------------------------------
-module Control.Concurrent.RCU.STM
+module Control.Concurrent.RCU.QSBR
   ( SRef
   , RCU, runRCU
   , MonadNew(..)
@@ -23,4 +23,4 @@ module Control.Concurrent.RCU.STM
   ) where
 
 import Control.Concurrent.RCU.Class
-import Control.Concurrent.RCU.STM.Internal
+import Control.Concurrent.RCU.QSBR.Internal
