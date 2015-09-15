@@ -37,6 +37,7 @@ import Control.Concurrent
 import Control.Concurrent.RCU.Class
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Parallel
 import Data.Atomics 
 import Data.List
 import Data.IORef 
@@ -60,8 +61,8 @@ readSRefIO = readIORef
 {-# INLINE readSRefIO #-}
 
 writeSRefIO :: IORef a -> a ->  IO ()
-writeSRefIO r !a = do a `seq` writeBarrier 
-                      writeIORef r a
+writeSRefIO r a = do a `pseq` writeBarrier
+                     writeIORef r a
 {-# INLINE writeSRefIO #-}
 
 --------------------------------------------------------------------------------

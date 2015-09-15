@@ -43,6 +43,7 @@ library
   build-depends:
     atomic-primops,
     base >= 4.8 && < 5,
+    parallel >= 3.2 && < 3.3,
     primitive,
     transformers >= 0.4 && < 0.5
 
