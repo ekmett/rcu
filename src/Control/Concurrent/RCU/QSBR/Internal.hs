@@ -29,6 +29,7 @@ module Control.Concurrent.RCU.QSBR.Internal
   , runRCU
   , ReadingRCU(..)
   , WritingRCU(..)
+  , RCUState(..)
   ) where
 
 import Control.Applicative
@@ -37,11 +38,9 @@ import Control.Concurrent.RCU.Class
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Atomics 
-import Data.Coerce
 import Data.List
 import Data.IORef 
 import Data.Word
-import Debug.Trace
 import Prelude hiding (read, Read)
 
 --------------------------------------------------------------------------------
@@ -78,8 +77,8 @@ offline = 0
 online :: Word64
 online  = 1
 
-counterInc :: Word64
-counterInc = 2 -- online threads will never overflow to 1
+-- counterInc :: Word64
+-- counterInc = 2 -- online threads will never overflow to 1
 
 newCounter :: IO Counter
 newCounter = newIORef online
@@ -223,7 +222,7 @@ synchronizeIO RCUState { rcuStateGlobalCounter
                              -- urcu uses "caa_cpu_relax()" decorated with a compiler
                              -- reordering barrier in this case.
             waitForThread (i + 1) threadCounter
-    forM_ threadCounters (waitForThread 0)
+    forM_ threadCounters (waitForThread (0 :: Int))
     return gc'
   when (mc /= offline) $ writeCounter rcuStateMyCounter gc'
   storeLoadBarrier
@@ -264,9 +263,7 @@ instance MonadRCU (SRef s) (RCU s) where
   type Reading (RCU s) = ReadingRCU s
   type Writing (RCU s) = WritingRCU s
   type Thread (RCU s) = RCUThread s
-  forking (RCU m) = RCU $ \ s@RCUState { rcuStateGlobalCounter 
-                                       , rcuStateThreadCountersV
-                                       , rcuStateWriterLockV } -> do
+  forking (RCU m) = RCU $ \ s@RCUState { rcuStateThreadCountersV } -> do
     -- Create an MVar the new thread can use to return a result.
     result <- newEmptyMVar
 
