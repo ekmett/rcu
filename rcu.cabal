@@ -4,16 +4,16 @@ version:       0.1
 license:       BSD3
 cabal-version: >= 1.22
 license-file:  LICENSE
-author:        Edward A. Kmett
-maintainer:    Edward A. Kmett <ekmett@gmail.com>
+author:        Edward A. Kmett, Ted Cooper
+maintainer:    Edward A. Kmett <ekmett@gmail.com>, Ted Cooper <anthezium@gmail.com>
 stability:     provisional
 homepage:      http://github.com/ekmett/rcu/
 bug-reports:   http://github.com/ekmett/rcu/issues
-copyright:     Copyright (C) 2015 Edward A. Kmett
+copyright:     Copyright (C) 2015 Edward A. Kmett, Theodore Rhys Cooper
 build-type:    Custom
 tested-with:   GHC == 7.10.1, GHC == 7.10.2
-synopsis:      STM-based Read-Copy-Update
-description:   STM-based Read-Copy-Update
+synopsis:      STM- and QSBR-based implementations of Read-Copy-Update
+description:   STM- and QSBR-based implementations of Read-Copy-Update
 
 extra-source-files:
   examples/*.hs
@@ -38,26 +38,46 @@ library
   build-depends:
     base >= 4.8 && < 5,
     stm >= 2.4.4 && < 2.5,
-    transformers >= 0.4 && < 0.5
+    transformers >= 0.4 && < 0.5,
+    primitive,
+    atomic-primops 
 
   exposed-modules:
     Control.Concurrent.RCU.Class
     Control.Concurrent.RCU.STM
     Control.Concurrent.RCU.STM.Internal
+    Control.Concurrent.RCU.QSBR
+    Control.Concurrent.RCU.QSBR.Internal
 
   ghc-options: -Wall -fwarn-tabs
 
   hs-source-dirs: src
   default-language: Haskell2010
 
-executable MoveString 
-  main-is: MoveString.hs
+executable MoveStringSTM
+  main-is: MoveStringSTM.hs
   build-depends:
     base >= 4.8 && < 5,
     stm >= 2.4.4 && < 2.5,
     transformers >= 0.4 && < 0.5
   other-modules:
     Control.Concurrent.RCU.STM
+
+  hs-source-dirs: src, examples
+  ghc-options:
+    -threaded -Wall -fwarn-tabs
+    "-with-rtsopts=-N"
+  default-language: Haskell2010
+
+executable MoveStringQSBR
+  main-is: MoveStringQSBR.hs
+  build-depends:
+    base >= 4.8 && < 5,
+    stm >= 2.4.4 && < 2.5,
+    transformers >= 0.4 && < 0.5,
+    atomic-primops 
+  other-modules:
+    Control.Concurrent.RCU.QSBR
 
   hs-source-dirs: src, examples
   ghc-options:

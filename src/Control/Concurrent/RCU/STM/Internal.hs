@@ -11,9 +11,10 @@
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (C) 2015 Edward Kmett
+-- Copyright   :  (C) 2015 Edward Kmett and Ted Cooper
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+--                Ted Cooper <anthezium@gmail.com>
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
