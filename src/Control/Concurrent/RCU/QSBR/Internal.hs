@@ -78,8 +78,8 @@ offline = 0
 online :: Word64
 online  = 1
 
--- counterInc :: Word64
--- counterInc = 2 -- online threads will never overflow to 1
+counterInc :: Word64
+counterInc = 2 -- online threads will never overflow to 0
 
 newCounter :: IO Counter
 newCounter = newIORef online
@@ -93,8 +93,8 @@ writeCounter c !i = writeIORef c i
 {-# INLINE writeCounter #-}
 
 incCounter :: Counter -> IO Word64
-incCounter c = do !x <- succ <$> readIORef c
-                  writeCounter c x
+incCounter c = do x <- (+ counterInc) <$> readIORef c
+                  x `pseq` writeCounter c x
                   return x
 {-# INLINE incCounter #-}
   
