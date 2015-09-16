@@ -1,6 +1,8 @@
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -37,11 +39,15 @@ import Control.Concurrent
 import Control.Concurrent.RCU.Class
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Primitive
 import Control.Parallel
 import Data.Atomics 
-import Data.List
 import Data.IORef 
-import Data.Word
+import Data.List
+import Data.Primitive
+import GHC.Prim
+import GHC.Word
+
 import Prelude hiding (read, Read)
 
 --------------------------------------------------------------------------------
@@ -70,7 +76,10 @@ writeSRefIO r a = do a `pseq` writeBarrier
 --------------------------------------------------------------------------------
 
 -- | Counter for causal ordering.
-type Counter = IORef Word64
+newtype Counter = Counter (MutableByteArray RealWorld)
+
+instance Eq Counter where
+  Counter m == Counter n = sameMutableByteArray m n
 
 offline :: Word64
 offline = 0
@@ -78,26 +87,28 @@ offline = 0
 online :: Word64
 online  = 1
 
-counterInc :: Word64
-counterInc = 2 -- online threads will never overflow to 0
+-- counterInc :: Word64
+-- counterInc = 2 -- online threads will never overflow to 0
 
 newCounter :: IO Counter
-newCounter = newIORef online
+newCounter = do
+  b <- newByteArray 8
+  writeByteArray b 0 online
+  return (Counter b)
+{-# INLINE newCounter #-}
 
 readCounter :: Counter -> IO Word64
-readCounter = readIORef
+readCounter (Counter c) = readByteArray c 0
 {-# INLINE readCounter #-}
 
 writeCounter :: Counter -> Word64 -> IO ()
-writeCounter c !i = writeIORef c i
+writeCounter (Counter c) w = writeByteArray c 0 w
 {-# INLINE writeCounter #-}
 
 incCounter :: Counter -> IO Word64
-incCounter c = do x <- (+ counterInc) <$> readIORef c
-                  x `pseq` writeCounter c x
-                  return x
+incCounter (Counter (MutableByteArray c)) = primitive $ \s -> case fetchAddIntArray# c 0# 2# s of
+  (# s', r #) -> (# s', W64# (int2Word# r) #)
 {-# INLINE incCounter #-}
-  
 
 -- | State for an RCU computation.
 data RCUState = RCUState
