@@ -8,6 +8,7 @@
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
+-- Quiescent-State-Based Reclamation
 -----------------------------------------------------------------------------
 module Control.Concurrent.RCU.QSBR
   ( SRef
