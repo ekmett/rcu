@@ -205,23 +205,20 @@ synchronizeIO RCUState { rcuStateGlobalCounter
   -- and skipping offline threads.  
   -- TODO: urcu acquires rcu_gp_lock here, and holds it until the writer has 
   -- updated the global counter AND finished waiting for readers. I think we may be able
-  -- to avoid holding the lock while waiting for readers as long as we
-  -- allow thread counters to exceed gc' (this is the case currently).     
+  -- to avoid holding the lock while waiting for readers by using a relativisitic list
+  -- of counters.     
   -- Maybe urcu holds the lock to prevent multiple readers from busy-waiting
   -- on the same shared array?  All they're doing is loading, so I'm not sure
-  -- why that would be a bad thing...  This issue, (and having a lock here at all)
-  -- is moot until we remove the big lock around write-side critical sections.
+  -- why that would be a bad thing.  
   -- This is worth pinging Mathieu about.
-  -- So, TODO: Remove this lock, add a storeLoadBarrier after rcuStateMyCounter update.
   gc' <- withMVar rcuStateThreadCountersV $ \ threadCounters -> do
     -- Increment the global counter.
     gc' <- incCounter rcuStateGlobalCounter
     -- Wait for each online reader to copy the new global counter.
     let waitForThread i threadCounter = do
           tc <- readCounter threadCounter
-          when (tc /= offline && tc < gc') $ do 
-            -- urcu puts the thread on a futex wait queue once per Int32 overflow
-            -- in this loop.  
+          when (tc /= offline && tc /= gc') $ do 
+            -- urcu puts the thread on a futex wait queue after 100 iterations.  
             threadDelay 1    -- TODO: Busy-wait for a while before sleeping.
 
             storeLoadBarrier -- This works on all systems, even those with 
