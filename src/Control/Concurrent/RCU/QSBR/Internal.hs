@@ -216,7 +216,6 @@ synchronizeIO RCUState { rcuStateGlobalCounter
   gc' <- withMVar rcuStateThreadCountersV $ \ threadCounters -> do
     -- Increment the global counter.
     gc' <- incCounter rcuStateGlobalCounter
-    writeBarrier
     -- Wait for each online reader to copy the new global counter.
     let waitForThread i threadCounter = do
           tc <- readCounter threadCounter
