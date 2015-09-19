@@ -39,11 +39,16 @@ flag unstable
   default: False
   manual: True
 
+-- Include benchmarks with bulky criterion dependency with -f-benchmarks.
+flag benchmarks
+  default: False
+  manual: True
+
 library
   build-depends:
     atomic-primops,
     base >= 4.8 && < 5,
-    ghc-prim,
+    ghc-prim >= 0.3,
     parallel >= 3.2 && < 3.3,
     primitive >= 0.6,
     transformers >= 0.4 && < 0.5
@@ -83,9 +88,27 @@ executable MoveStringQSBR
   main-is: MoveStringQSBR.hs
   build-depends:
     base >= 4.8 && < 5,
+    primitive >= 0.6,
     rcu,
     stm >= 2.4.4 && < 2.5,
     transformers >= 0.4 && < 0.5
+
+  hs-source-dirs: examples
+  ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
+  default-language: Haskell2010
+
+executable IncCounterExperiment
+  main-is: IncCounterExperiment.hs
+  if !flag(benchmarks)
+    buildable: False
+  else
+    build-depends:
+      base >= 4.8 && < 5,
+      criterion,
+      ghc-prim >= 0.3,
+      primitive >= 0.6,
+      rcu,
+      transformers >= 0.4 && < 0.5
 
   hs-source-dirs: examples
   ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
