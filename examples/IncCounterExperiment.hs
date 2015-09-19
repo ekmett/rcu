@@ -69,6 +69,7 @@ incCounterNonAtomic c = do
   x <- (+ 2) <$> readCounter c
   writeCounter c x
   return x
+{-# INLINE incCounterNonAtomic #-}
 
 main :: IO ()
 main = defaultMain [ bgroup "incCounterAtomic"         $ bunches incCounterAtomic
