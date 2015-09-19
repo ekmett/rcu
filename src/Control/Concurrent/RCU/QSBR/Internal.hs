@@ -106,8 +106,10 @@ writeCounter (Counter c) w = writeByteArray c 0 w
 {-# INLINE writeCounter #-}
 
 incCounter :: Counter -> IO Word64
-incCounter (Counter (MutableByteArray c)) = primitive $ \s -> case fetchAddIntArray# c 0# 2# s of
-  (# s', r #) -> (# s', W64# (int2Word# r) #)
+incCounter c = do
+  x <- (+ 2) <$> readCounter c
+  writeCounter c x
+  return x
 {-# INLINE incCounter #-}
 
 -- | State for an RCU computation.
