@@ -1,12 +1,15 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 import Control.Concurrent.RCU.QSBR
 import Control.Concurrent.RCU.Class
 import Control.Monad (forM, forM_, replicateM, replicateM_, when)
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.List (intercalate)
+import Data.Monoid ((<>))
 import Data.Word (Word64)
 import Debug.Trace (trace)
+import Options.Applicative (auto, execParser, fullDesc, help, info, long, metavar, option, progDesc, short)
 import Prelude hiding (read)
 
 data List s a = Nil | Cons a (SRef s (List s a))
@@ -56,11 +59,14 @@ testList = helper 4 =<< newSRef Nil
   where helper (- 1) tl = return tl
         helper i     tl = helper (pred i) =<< newSRef (Cons (shiftL 1 i) tl)
 
+data Opts = Opts { nReaders :: Int
+                 , nUpdates :: Int }
+
 main :: IO ()
 main = do 
-  let nReaders = 7
-      nUpdates = 320000
-      nTotal   = fromIntegral $ nUpdates * nReaders :: Double
+  Opts { nReaders, nUpdates } <- execParser opts
+  putStrLn $ "readers: " ++ show nReaders ++ ", updates: " ++ show nUpdates
+  let nTotal = fromIntegral $ nUpdates * nReaders :: Double
   outs <- runRCU $ do
     -- initialize list
     hd <- testList
@@ -71,11 +77,25 @@ main = do
     -- spawn a writer to move a node from a later position to an earlier position nUpdates times
     wt  <- forking $ writing $ do replicateM_ nUpdates $ moveDback hd
                                   writeSRef rf True
-    
     -- wait for the readers to finish
     outs <- forM rts joining
     -- wait for the writer to finish
     joining wt
     return outs
-  putStrLn ("dups by thread:" ++ (intercalate ", " $ zipWith (\ i dups -> show i ++ ": " ++ show dups) [(1 :: Integer)..] outs))
+  putStrLn $ "dups by thread:" ++ (intercalate ", " $ zipWith (\ i dups -> show i ++ ": " ++ show dups) [(1 :: Integer)..] outs)
   putStrLn $ "average dups per update: " ++ show (fromIntegral (sum outs) / nTotal)
+  where opts = info optsParser
+             ( fullDesc
+            <> progDesc "Measure writer latency for synchronize." )
+        optsParser = Opts <$> nReadersParser <*> nUpdatesParser
+        nReadersParser = option auto
+                       ( long "readers"
+                      <> short 'r'
+                      <> metavar "N"
+                      <> help "Spawn N reader threads" )
+        nUpdatesParser = option auto
+                       ( long "updates"
+                      <> short 'u'
+                      <> metavar "M"
+                      <> help "Writer thread performs M updates" )
+        
