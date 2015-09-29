@@ -59,7 +59,7 @@ testList = helper 4 =<< newSRef Nil
 main :: IO ()
 main = do 
   let nReaders = 7
-      nUpdates = 3200000
+      nUpdates = 320000
       nTotal   = fromIntegral $ nUpdates * nReaders :: Double
   outs <- runRCU $ do
     -- initialize list
