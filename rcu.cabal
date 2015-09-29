@@ -124,6 +124,23 @@ executable IncCounterExperiment
   ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
   default-language: Haskell2010
 
+executable TimeSynchronizeQSBR
+  main-is: TimeSynchronizeQSBR.hs
+  if !flag(benchmarks)
+    buildable: False
+  else
+    build-depends:
+      base >= 4.8 && < 5,
+      containers >= 0.5,
+      ghc-prim >= 0.3,
+      primitive >= 0.6,
+      rcu,
+      transformers >= 0.4 && < 0.5
+
+  hs-source-dirs: examples
+  ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
+  default-language: Haskell2010
+
 test-suite doctests
   type:           exitcode-stdio-1.0
   main-is:        doctests.hs
