@@ -50,6 +50,8 @@ library
 
   exposed-modules:
     Control.Concurrent.RCU.Class
+    Control.Concurrent.RCU.GC
+    Control.Concurrent.RCU.GC.Internal
     Control.Concurrent.RCU.QSBR
     Control.Concurrent.RCU.QSBR.Internal
 
