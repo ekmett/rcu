@@ -39,30 +39,14 @@ flag unstable
   default: False
   manual: True
 
--- Include benchmarks with bulky criterion dependency with -f-benchmarks.
-flag benchmarks
-  default: False
-  manual: True
-
 library
-  if flag(benchmarks)
-    build-depends:
-      atomic-primops,
-      base >= 4.8 && < 5,
-      criterion >= 1.1,
-      ghc-prim >= 0.3,
-      optparse-applicative >= 0.11,
-      parallel >= 3.2 && < 3.3,
-      primitive >= 0.6,
-      transformers >= 0.4 && < 0.5
-  else
-    build-depends:
-      atomic-primops,
-      base >= 4.8 && < 5,
-      ghc-prim >= 0.3,
-      parallel >= 3.2 && < 3.3,
-      primitive >= 0.6,
-      transformers >= 0.4 && < 0.5
+  build-depends:
+    atomic-primops,
+    base >= 4.8 && < 5,
+    ghc-prim >= 0.3,
+    parallel >= 3.2 && < 3.3,
+    primitive >= 0.6,
+    transformers >= 0.4 && < 0.5
 
   exposed-modules:
     Control.Concurrent.RCU.Class
@@ -88,12 +72,7 @@ executable MoveStringSTM
   if !flag(unstable)
     buildable: False
   else
-    build-depends:
-      base >= 4.8 && < 5,
-      rcu,
-      stm >= 2.4.4 && < 2.5,
-      transformers >= 0.4 && < 0.5
-
+    build-depends: base, rcu, transformers
     hs-source-dirs: examples
     ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
     default-language: Haskell2010
@@ -101,13 +80,7 @@ executable MoveStringSTM
 executable MoveStringQSBR
   main-is: MoveString.hs
   cpp-options: -DMODE=QSBR
-  build-depends:
-    base >= 4.8 && < 5,
-    primitive >= 0.6,
-    rcu,
-    stm >= 2.4.4 && < 2.5,
-    transformers >= 0.4 && < 0.5
-
+  build-depends: base, rcu, transformers
   hs-source-dirs: examples
   ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
   default-language: Haskell2010
@@ -115,47 +88,55 @@ executable MoveStringQSBR
 executable MoveStringGC
   main-is: MoveString.hs
   cpp-options: -DMODE=GC
-  build-depends:
-    base >= 4.8 && < 5,
-    primitive >= 0.6,
-    rcu,
-    stm >= 2.4.4 && < 2.5,
-    transformers >= 0.4 && < 0.5
-
+  build-depends: base, rcu, transformers
   hs-source-dirs: examples
   ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
   default-language: Haskell2010
 
-executable IncCounterExperiment
+benchmark IncCounterExperiment
   main-is: IncCounterExperiment.hs
-  if !flag(benchmarks)
-    buildable: False
-  else
-    build-depends:
-      base >= 4.8 && < 5,
-      criterion >= 1.1,
-      ghc-prim >= 0.3,
-      primitive >= 0.6,
-      rcu,
-      transformers >= 0.4 && < 0.5
+  type: exitcode-stdio-1.0
+  build-depends:
+    base,
+    criterion >= 1.1,
+    ghc-prim,
+    primitive,
+    rcu,
+    transformers
 
   hs-source-dirs: examples
   ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
   default-language: Haskell2010
 
-executable TimeSynchronizeQSBR
-  main-is: TimeSynchronizeQSBR.hs
-  if !flag(benchmarks)
-    buildable: False
-  else
-    build-depends:
-      base >= 4.8 && < 5,
-      containers >= 0.5,
-      ghc-prim >= 0.3,
-      optparse-applicative >= 0.11,
-      primitive >= 0.6,
-      rcu,
-      transformers >= 0.4 && < 0.5
+benchmark TimeSynchronizeQSBR
+  main-is: TimeSynchronize.hs
+  type: exitcode-stdio-1.0
+  cpp-options: -DMODE=QSBR
+  build-depends:
+    base,
+    containers,
+    ghc-prim,
+    optparse-applicative >= 0.11,
+    primitive,
+    rcu,
+    transformers
+
+  hs-source-dirs: examples
+  ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
+  default-language: Haskell2010
+
+benchmark TimeSynchronizeGC
+  main-is: TimeSynchronize.hs
+  type: exitcode-stdio-1.0
+  cpp-options: -DMODE=GC
+  build-depends:
+    base,
+    containers,
+    ghc-prim,
+    optparse-applicative >= 0.11,
+    primitive,
+    rcu,
+    transformers
 
   hs-source-dirs: examples
   ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"

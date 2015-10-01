@@ -1,7 +1,8 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
-import Control.Concurrent.RCU.QSBR
+import Control.Concurrent.RCU.MODE
 import Control.Concurrent.RCU.Class
 import Control.Monad (forM, forM_, replicateM, replicateM_, when)
 import Data.Bits ((.&.), (.|.), shiftL)
