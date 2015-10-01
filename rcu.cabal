@@ -68,6 +68,8 @@ library
     Control.Concurrent.RCU.Class
     Control.Concurrent.RCU.GC
     Control.Concurrent.RCU.GC.Internal
+    Control.Concurrent.RCU.GCQSBR
+    Control.Concurrent.RCU.GCQSBR.Internal
     Control.Concurrent.RCU.QSBR
     Control.Concurrent.RCU.QSBR.Internal
 
@@ -83,7 +85,8 @@ library
       Control.Concurrent.RCU.STM.Internal
 
 executable MoveStringSTM
-  main-is: MoveStringSTM.hs
+  main-is: MoveString.hs
+  cpp-options: -DMODE=STM
   if !flag(unstable)
     buildable: False
   else
@@ -98,7 +101,8 @@ executable MoveStringSTM
     default-language: Haskell2010
 
 executable MoveStringQSBR
-  main-is: MoveStringQSBR.hs
+  main-is: MoveString.hs
+  cpp-options: -DMODE=QSBR
   build-depends:
     base >= 4.8 && < 5,
     primitive >= 0.6,
@@ -111,7 +115,22 @@ executable MoveStringQSBR
   default-language: Haskell2010
 
 executable MoveStringGC
-  main-is: MoveStringGC.hs
+  main-is: MoveString.hs
+  cpp-options: -DMODE=GC
+  build-depends:
+    base >= 4.8 && < 5,
+    primitive >= 0.6,
+    rcu,
+    stm >= 2.4.4 && < 2.5,
+    transformers >= 0.4 && < 0.5
+
+  hs-source-dirs: examples
+  ghc-options: -threaded -Wall -fwarn-tabs "-with-rtsopts=-N"
+  default-language: Haskell2010
+
+executable MoveStringGCQSBR
+  main-is: MoveString.hs
+  cpp-options: -DMODE=GCQSBR
   build-depends:
     base >= 4.8 && < 5,
     primitive >= 0.6,

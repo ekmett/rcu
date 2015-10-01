@@ -1,5 +1,7 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
-import Control.Concurrent.RCU.GC
+
+import Control.Concurrent.RCU.MODE
 import Control.Concurrent.RCU.Class
 import Control.Monad (forM, forM_, replicateM)
 import Data.List (group, intercalate)

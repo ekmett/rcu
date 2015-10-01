@@ -16,16 +16,16 @@
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (C) 2015 Edward Kmett and Paul Khuong
+-- Copyright   :  (C) 2015 Edward Kmett and Ted Cooper
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>, 
 --                Ted Cooper <anthezium@gmail.com>
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
--- GC-based RCU
+-- QSBR-based RCU
 -----------------------------------------------------------------------------
-module Control.Concurrent.RCU.GC.Internal
+module Control.Concurrent.RCU.GCQSBR.Internal
   ( SRef(..)
   , RCUThread(..)
   , RCU(..)
@@ -44,8 +44,13 @@ import Control.Monad.Primitive
 import Control.Parallel
 import Data.Atomics 
 import Data.IORef 
+import Data.List
+import Data.Primitive
+import GHC.Prim
+import GHC.Word
 import Prelude hiding (read, Read)
 import System.Mem
+
 
 --------------------------------------------------------------------------------
 -- * Shared References
@@ -72,6 +77,43 @@ writeSRefIO r a = do a `pseq` writeBarrier
 -- * Shared state
 --------------------------------------------------------------------------------
 
+-- | Counter for causal ordering.
+newtype Counter = Counter (MutableByteArray RealWorld)
+
+instance Eq Counter where
+  Counter m == Counter n = sameMutableByteArray m n
+
+offline :: Word64
+offline = 0
+
+online :: Word64
+online  = 1
+
+-- counterInc :: Word64
+-- counterInc = 2 -- online threads will never overflow to 0
+
+newCounter :: IO Counter
+newCounter = do
+  b <- newByteArray 8
+  writeByteArray b 0 online
+  return (Counter b)
+{-# INLINE newCounter #-}
+
+readCounter :: Counter -> IO Word64
+readCounter (Counter c) = readByteArray c 0
+{-# INLINE readCounter #-}
+
+writeCounter :: Counter -> Word64 -> IO ()
+writeCounter (Counter c) w = writeByteArray c 0 w
+{-# INLINE writeCounter #-}
+
+incCounter :: Counter -> IO Word64
+incCounter c = do
+  x <- (+ 2) <$> readCounter c
+  writeCounter c x
+  return x
+{-# INLINE incCounter #-}
+
 newtype Version = Version (IORef ())
 
 newVersion :: IO Version
@@ -79,7 +121,10 @@ newVersion = Version <$> newIORef ()
 
 -- | State for an RCU computation.
 data RCUState = RCUState
-  { rcuStateGlobalVersion   :: {-# UNPACK #-} !(IORef Version)
+  { rcuStateGlobalCounter   :: {-# UNPACK #-} !Counter
+  , rcuStateGlobalVersion   :: {-# UNPACK #-} !(IORef Version)
+  , rcuStateMyCounter       :: {-# UNPACK #-} !Counter  -- each thread's state gets its own counter
+  , rcuStateThreadCountersV :: {-# UNPACK #-} !(MVar [Counter])
   , rcuStateWriterLockV     :: {-# UNPACK #-} !(MVar ())
   }
 
@@ -156,22 +201,38 @@ instance MonadWriting (SRef s) (WritingRCU s) where
   {-# INLINE writeSRef #-}
   synchronize = WritingRCU synchronizeIO
 
+synchronizeIO :: RCUState -> IO () 
+synchronizeIO s = do
+  withMVar (rcuStateThreadCountersV s) $ \ threadCounters -> do
+    gc' <- incCounter (rcuStateGlobalCounter s)
+    writeCounter (rcuStateMyCounter s) gc'
+    let waitForThreads i xxs@(x:xs)
+          | i > 2000 = return True
+          | otherwise = do
+            tc <- readCounter x
+            if (tc /= gc') then do 
+              threadDelay 1
+              waitForThreads (i + 1) xxs
+            else waitForThreads (i + 1) xs
+        waitForThreads _ [] = return False
+    bad <- waitForThreads (0 :: Int) threadCounters
+    when bad $ do
+      -- slow path
+      m <- newEmptyMVar
+      stuff s m
+      performMinorGC
+      sitAndSpin m
+  storeLoadBarrier
+
 stuff :: RCUState -> MVar ()  -> IO ()
 stuff s m = do
   Version v <- readIORef (rcuStateGlobalVersion s)
   v' <- newVersion
-  writeIORef (rcuStateGlobalVersion s) v' 
+  writeIORef (rcuStateGlobalVersion s) v'
   storeLoadBarrier
   _ <- mkWeakIORef v $ putMVar m ()
   return ()
 {-# NOINLINE stuff #-}
-
-synchronizeIO :: RCUState -> IO () 
-synchronizeIO s = do
-  m <- newEmptyMVar
-  stuff s m
-  performMinorGC
-  sitAndSpin m
 
 -- This is awful. It should just takeMVar
 sitAndSpin :: MVar () -> IO ()
@@ -180,7 +241,7 @@ sitAndSpin m = tryTakeMVar m >>= \case
   Nothing -> do
     performMajorGC
     sitAndSpin m
- 
+
 --------------------------------------------------------------------------------
 -- * RCU Context
 --------------------------------------------------------------------------------
@@ -218,32 +279,32 @@ instance MonadRCU (SRef s) (RCU s) where
   type Writing (RCU s) = WritingRCU s
   type Thread (RCU s) = RCUThread s
   forking (RCU m) = RCU $ \ s -> do
-    -- Create an MVar the new thread can use to return a result.
     result <- newEmptyMVar
+    threadCounter <- newCounter
+    modifyMVar_ (rcuStateThreadCountersV s) $ return . (threadCounter :)
     tid <- forkIO $ do
-      x <- m s
+      x <- m $ s { rcuStateMyCounter = threadCounter }
       putMVar result x
+      modifyMVar_ (rcuStateThreadCountersV s) $ return . delete threadCounter
     return (RCUThread tid result)
   {-# INLINE forking #-}
 
   joining (RCUThread _ m) = RCU $ \ _ -> readMVar m
   {-# INLINE joining #-}
 
-  reading (ReadingRCU m) = RCU $ \ s -> do 
+  reading (ReadingRCU m) = RCU $ \ s -> do
     v <- readIORef (rcuStateGlobalVersion s)
-    loadLoadBarrier
     x <- m s
     touch v
+    writeCounter (rcuStateMyCounter s) =<< readCounter (rcuStateGlobalCounter s)
     return x
   {-# INLINE reading #-}
 
   writing (WritingRCU m) = RCU $ \ s -> do
+    -- Acquire the writer-serializing lock.
     takeMVar (rcuStateWriterLockV s)
     x <- m s
-    -- Guarantee that writes in this critical section happen before writes in
-    -- subsequent critical sections.
     synchronizeIO s
-    -- Release the writer-serializing lock.
     putMVar (rcuStateWriterLockV s) ()
     return x
   {-# INLINE writing #-}
@@ -255,8 +316,10 @@ instance MonadIO (RCU s) where
 -- | Run an RCU computation.
 runRCU :: (forall s. RCU s a) -> IO a
 runRCU m = do
-  v <- newVersion 
-  rv <- newIORef v
-  l <- newMVar ()
-  unRCU m (RCUState rv l)
+  v <- newVersion
+  unRCU m =<< RCUState <$> newCounter
+                       <*> newIORef v
+                       <*> newCounter
+                       <*> newMVar []
+                       <*> newMVar ()
 {-# INLINE runRCU #-}
