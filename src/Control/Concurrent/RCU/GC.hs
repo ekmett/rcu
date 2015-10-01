@@ -1,14 +1,14 @@
 {-# LANGUAGE Trustworthy #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (C) 2015 Edward Kmett and Paul Khuong
+-- Copyright   :  (C) 2015 Edward Kmett, Paul Khuong and Ted Cooper
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 --                Ted Cooper <anthezium@gmail.com>
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
--- Unfenched QSBR w/ Finalizer-Based Fallback Reclamation
+-- Unfenced QSBR w/ Finalizer-Based Fallback Reclamation
 -----------------------------------------------------------------------------
 module Control.Concurrent.RCU.GC
   ( SRef
