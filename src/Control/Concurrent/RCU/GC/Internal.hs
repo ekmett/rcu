@@ -46,7 +46,6 @@ import Data.Atomics
 import Data.IORef 
 import Data.List
 import Data.Primitive
-import GHC.Word
 import Prelude hiding (read, Read)
 import System.Mem
 
@@ -82,26 +81,25 @@ newtype Counter = Counter (MutableByteArray RealWorld)
 instance Eq Counter where
   Counter m == Counter n = sameMutableByteArray m n
 
-newCounter :: Word64 -> IO Counter
+newCounter :: Int -> IO Counter
 newCounter w = do
   b <- newByteArray 8
   writeByteArray b 0 w
   return (Counter b)
 {-# INLINE newCounter #-}
 
-readCounter :: Counter -> IO Word64
+readCounter :: Counter -> IO Int
 readCounter (Counter c) = readByteArray c 0
 {-# INLINE readCounter #-}
 
-writeCounter :: Counter -> Word64 -> IO ()
+writeCounter :: Counter -> Int -> IO ()
 writeCounter (Counter c) w = writeByteArray c 0 w
 {-# INLINE writeCounter #-}
 
-incCounter :: Counter -> IO Word64
-incCounter c = do
-  x <- readCounter c
-  writeCounter c (x + 1)
-  return x
+incCounter :: Counter -> IO Int
+incCounter (Counter c) = do
+  x <- fetchAddIntArray c 0 1
+  return $! x + 1
 {-# INLINE incCounter #-}
 
 newtype Version = Version (IORef ())
@@ -218,8 +216,7 @@ stuff :: RCUState -> MVar ()  -> IO ()
 stuff s m = do
   Version v <- readIORef (rcuStateGlobalVersion s)
   v' <- newVersion
-  writeIORef (rcuStateGlobalVersion s) v'
-  storeLoadBarrier
+  atomicWriteIORef (rcuStateGlobalVersion s) v'
   _ <- mkWeakIORef v $ putMVar m ()
   return ()
 {-# NOINLINE stuff #-}

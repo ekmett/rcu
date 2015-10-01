@@ -8,7 +8,7 @@
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
--- Finalizer-Based Reclamation
+-- Unfenched QSBR w/ Finalizer-Based Fallback Reclamation
 -----------------------------------------------------------------------------
 module Control.Concurrent.RCU.GC
   ( SRef
