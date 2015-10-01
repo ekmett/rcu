@@ -44,10 +44,8 @@ import Control.Monad.Primitive
 import Control.Parallel
 import Data.Atomics 
 import Data.IORef 
-import Data.Primitive
 import Prelude hiding (read, Read)
 import System.Mem
-import System.Mem.Weak
 
 --------------------------------------------------------------------------------
 -- * Shared References
@@ -172,7 +170,7 @@ synchronizeIO :: RCUState -> IO ()
 synchronizeIO s = do
   m <- newEmptyMVar
   stuff s m
-  performMajorGC
+  performMinorGC
   sitAndSpin m
 
 -- This is awful. It should just takeMVar
@@ -181,7 +179,6 @@ sitAndSpin m = tryTakeMVar m >>= \case
   Just () -> return ()
   Nothing -> do
     performMajorGC
-    -- ba <- newByteArray 2000000
     sitAndSpin m
  
 --------------------------------------------------------------------------------
