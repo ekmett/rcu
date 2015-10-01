@@ -1,5 +1,6 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -43,6 +44,7 @@ import Control.Monad.Primitive
 import Control.Parallel
 import Data.Atomics 
 import Data.IORef 
+import Data.Primitive
 import Prelude hiding (read, Read)
 import System.Mem
 import System.Mem.Weak
@@ -156,16 +158,32 @@ instance MonadWriting (SRef s) (WritingRCU s) where
   {-# INLINE writeSRef #-}
   synchronize = WritingRCU synchronizeIO
 
+stuff :: RCUState -> MVar ()  -> IO ()
+stuff s m = do
+  Version v <- readIORef (rcuStateGlobalCounter s)
+  v' <- newVersion
+  writeIORef (rcuStateGlobalCounter s) v' 
+  storeLoadBarrier
+  _ <- mkWeakIORef v $ putMVar m ()
+  return ()
+{-# NOINLINE stuff #-}
+
 synchronizeIO :: RCUState -> IO () 
 synchronizeIO s = do
-  v' <- newVersion
-  v <- readIORef (rcuStateGlobalCounter s)
-  writeIORef (rcuStateGlobalCounter s) v' 
   m <- newEmptyMVar
-  addFinalizer v $ putMVar m ()
-  performMinorGC
-  readMVar m
+  stuff s m
+  performMajorGC
+  sitAndSpin m
 
+-- This is awful. It should just takeMVar
+sitAndSpin :: MVar () -> IO ()
+sitAndSpin m = tryTakeMVar m >>= \case
+  Just () -> return ()
+  Nothing -> do
+    performMajorGC
+    -- ba <- newByteArray 2000000
+    sitAndSpin m
+ 
 --------------------------------------------------------------------------------
 -- * RCU Context
 --------------------------------------------------------------------------------
