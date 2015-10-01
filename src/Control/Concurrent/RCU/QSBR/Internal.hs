@@ -197,7 +197,7 @@ synchronizeIO RCUState { rcuStateGlobalCounter
                        , rcuStateThreadCountersV } = do
   -- Get this thread's counter.
   mc <- readCounter rcuStateMyCounter
-  storeLoadBarrier
+
   -- If this thread is not offline already, take it offline.
   when (mc /= offline) $ writeCounter rcuStateMyCounter offline
 
@@ -216,7 +216,7 @@ synchronizeIO RCUState { rcuStateGlobalCounter
   gc' <- withMVar rcuStateThreadCountersV $ \ threadCounters -> do
     -- Increment the global counter.
     gc' <- incCounter rcuStateGlobalCounter
-    writeBarrier
+    writeBarrier -- You don't require this barrier if you assume the global counter is monotonic.
     -- Wait for each online reader to copy the new global counter.
     let waitForThread i threadCounter = do
           tc <- readCounter threadCounter
