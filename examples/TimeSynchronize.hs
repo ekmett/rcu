@@ -4,12 +4,15 @@
 {-# LANGUAGE FlexibleContexts #-}
 import Control.Concurrent.RCU.MODE
 import Control.Concurrent.RCU.Class
-import Control.Monad (forM, forM_, replicateM, replicateM_, when)
+import Control.DeepSeq (force)
+import Control.Exception (evaluate)
+import Control.Monad (replicateM, replicateM_)
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.List (intercalate)
 import Data.Monoid ((<>))
+import Data.Time (diffUTCTime, getCurrentTime)
 import Data.Word (Word64)
-import Debug.Trace (trace)
+--import Debug.Trace (trace)
 import Options.Applicative (auto, execParser, fullDesc, help, info, long, metavar, option, progDesc, short)
 import Prelude hiding (read)
 
@@ -68,23 +71,50 @@ main = do
   Opts { nReaders, nUpdates } <- execParser opts
   putStrLn $ "readers: " ++ show nReaders ++ ", updates: " ++ show nUpdates
   let nTotal = fromIntegral $ nUpdates * nReaders :: Double
-  outs <- runRCU $ do
+  (ods, wd, wfd) <- runRCU $ do
     -- initialize list
-    hd <- testList
+    hd  <- testList
     -- initialize flag writer uses to stop readers
-    rf <- newSRef False
+    rf  <- newSRef False
     -- spawn nReaders readers, each takes snapshots of the list until the writer has finished
-    rts <- replicateM nReaders $ forking $ reader rf 0 hd
+    rts <- replicateM nReaders 
+         $ forking $ reading $ ReadingRCU 
+         $ \ s -> do beg <- getCurrentTime
+                     x   <- evaluate . force =<< unRCU (reader rf 0 hd) s -- how long do the snapshots take?
+                     mid <- getCurrentTime
+                     _   <- evaluate . force $ x -- how long does walking over the result take?
+                     end <- getCurrentTime
+                     return ( x
+                            , mid `diffUTCTime` beg
+                            , end `diffUTCTime` mid )
     -- spawn a writer to move a node from a later position to an earlier position nUpdates times
-    wt  <- forking $ writing $ do replicateM_ nUpdates $ moveDback hd
-                                  writeSRef rf True
+    wt  <- forking $ writing $ WritingRCU 
+         $ \ s -> do beg <- getCurrentTime
+                     x   <- evaluate . force =<< runWritingRCU (replicateM_ nUpdates $ moveDback hd) s
+                     runWritingRCU (writeSRef rf True) s
+                     mid <- getCurrentTime
+                     _   <- evaluate . force $ x
+                     end <- getCurrentTime
+                     return ( mid `diffUTCTime` beg
+                            , end `diffUTCTime` mid )
     -- wait for the readers to finish
-    outs <- forM rts joining
+    ods <- mapM joining rts
     -- wait for the writer to finish
-    joining wt
-    return outs
+    (wd, wfd) <- joining wt
+    return (ods, wd, wfd)
+  let outs = map a ods
+      rds  = map b ods
+      rfds = map c ods
+      a (x,_,_) = x
+      b (_,y,_) = y
+      c (_,_,z) = z
   putStrLn $ "dups by thread:" ++ (intercalate ", " $ zipWith (\ i dups -> show i ++ ": " ++ show dups) [(1 :: Integer)..] outs)
   putStrLn $ "average dups per update: " ++ show (fromIntegral (sum outs) / nTotal)
+  putStrLn $ "reader times: " ++ show rds
+  putStrLn $ "reader evaluate . force times: " ++ show rfds
+  putStrLn $ "writer time: " ++ show wd
+  putStrLn $ "writer evaluate . force time: " ++ show wfd
+  putStrLn $ "average writer update time: " ++ show ((wd - wfd) / fromIntegral nUpdates)
   where opts = info optsParser
              ( fullDesc
             <> progDesc "Measure writer latency for synchronize." )
