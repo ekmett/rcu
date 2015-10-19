@@ -1,0 +1,1 @@
+void pause(void);

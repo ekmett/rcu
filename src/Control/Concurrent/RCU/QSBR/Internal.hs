@@ -11,6 +11,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
@@ -29,9 +30,11 @@ module Control.Concurrent.RCU.QSBR.Internal
   , RCUThread(..)
   , RCU(..)
   , runRCU
+  , runOnRCU
   , ReadingRCU(..)
   , WritingRCU(..)
   , RCUState(..)
+  , writeSRefIO
   ) where
 
 import Control.Applicative
@@ -45,10 +48,11 @@ import Data.Atomics
 import Data.IORef 
 import Data.List
 import Data.Primitive
-import GHC.Prim
-import GHC.Word
+import Foreign
 
 import Prelude hiding (read, Read)
+
+foreign import ccall unsafe "pause.h" pause :: IO ()
 
 --------------------------------------------------------------------------------
 -- * Shared References
@@ -114,10 +118,14 @@ incCounter c = do
 
 -- | State for an RCU computation.
 data RCUState = RCUState
-  { rcuStateGlobalCounter   :: {-# UNPACK #-} !Counter
-  , rcuStateMyCounter       :: {-# UNPACK #-} !Counter  -- each thread's state gets its own counter
-  , rcuStateThreadCountersV :: {-# UNPACK #-} !(MVar [Counter])
-  , rcuStateWriterLockV     :: {-# UNPACK #-} !(MVar ())
+  { -- * Global state
+    rcuStateGlobalCounter       :: {-# UNPACK #-} !Counter
+  , rcuStateThreadCountersR     :: {-# UNPACK #-} !(IORef [Counter])
+  , rcuStateThreadCountersLockV :: {-# UNPACK #-} !(MVar ())
+  , rcuStateWriterLockV         :: {-# UNPACK #-} !(MVar ())
+    -- * Thread state
+  , rcuStateMyCounter           :: {-# UNPACK #-} !Counter
+  , rcuStatePinned              ::                !(Maybe Int)
   }
 
 --------------------------------------------------------------------------------
@@ -196,44 +204,33 @@ instance MonadWriting (SRef s) (WritingRCU s) where
 synchronizeIO :: RCUState -> IO () 
 synchronizeIO RCUState { rcuStateGlobalCounter
                        , rcuStateMyCounter
-                       , rcuStateThreadCountersV } = do
+                       , rcuStateThreadCountersR } = do
   -- Get this thread's counter.
   mc <- readCounter rcuStateMyCounter
-
   -- If this thread is not offline already, take it offline.
   when (mc /= offline) $ writeCounter rcuStateMyCounter offline
 
   -- Loop through thread counters, waiting for online threads to catch up
   -- and skipping offline threads.  
-  -- TODO: urcu acquires rcu_gp_lock here, and holds it until the writer has 
-  -- updated the global counter AND finished waiting for readers. I think we may be able
-  -- to avoid holding the lock while waiting for readers by using a relativisitic list
-  -- of counters.     
-  -- Maybe urcu holds the lock to prevent multiple readers from busy-waiting
-  -- on the same shared array?  All they're doing is loading, so I'm not sure
-  -- why that would be a bad thing.  
-  -- This is worth pinging Mathieu about.
-  gc' <- withMVar rcuStateThreadCountersV $ \ threadCounters -> do
-    -- Increment the global counter.
-    gc' <- incCounter rcuStateGlobalCounter
-    -- Wait for each online reader to copy the new global counter.
-    let waitForThread i threadCounter = do
-          tc <- readCounter threadCounter
-          when (tc /= offline && tc /= gc') $ do 
-            -- urcu puts the thread on a futex wait queue after 100 iterations.  
-            threadDelay 1    -- TODO: Busy-wait for a while before sleeping.
-
-            storeLoadBarrier -- This works on all systems, even those with 
-                             -- incoherent caches, but slows down writers 
-                             -- unnecessarily on cache-coherent systems.  
-                             -- TODO: On cache-coherent systems, 
-                             -- figure out how to make GHC emit e.g. "rep; nop"
-                             -- to tell the CPU we're in a busy-wait loop.  
-                             -- urcu uses "caa_cpu_relax()" decorated with a compiler
-                             -- reordering barrier in this case.
-            waitForThread (i + 1) threadCounter
-    forM_ threadCounters (waitForThread (0 :: Int))
-    return gc'
+  threadCounters <- readSRefIO rcuStateThreadCountersR
+  -- Increment the global counter.
+  gc' <- incCounter rcuStateGlobalCounter
+  -- Wait for each online reader to copy the new global counter.
+  let waitForThread !(n :: Word64) threadCounter = do
+        tc <- readCounter threadCounter
+        when (tc /= offline && tc /= gc') $ do 
+          -- spin for 999 iterations before sleeping
+          if n `mod` 1000 == 0
+             then threadDelay 1
+             else pause -- TODO: Figure out how to make GHC emit e.g. "rep; nop" 
+                        -- inline to tell the CPU we're in a busy-wait loop.  
+                        -- For now, FFI call a C function with inline "rep; nop".
+                        -- This approach is apparently about 10 times heavier than 
+                        -- just inlining the instruction in your program text :(
+                        -- urcu uses "caa_cpu_relax()" decorated with a compiler
+                        -- reordering barrier in this case.
+          waitForThread (succ n) threadCounter
+  forM_ threadCounters (waitForThread 1)
   when (mc /= offline) $ writeCounter rcuStateMyCounter gc'
   storeLoadBarrier
 
@@ -273,17 +270,23 @@ instance MonadRCU (SRef s) (RCU s) where
   type Reading (RCU s) = ReadingRCU s
   type Writing (RCU s) = WritingRCU s
   type Thread (RCU s) = RCUThread s
-  forking (RCU m) = RCU $ \ s@RCUState { rcuStateThreadCountersV } -> do
+  forking (RCU m) = RCU $ \ s@RCUState { rcuStateThreadCountersLockV
+                                       , rcuStateThreadCountersR
+                                       , rcuStatePinned } -> do
     -- Create an MVar the new thread can use to return a result.
     result <- newEmptyMVar
 
     -- Create a counter for the new thread, and add it to the list.
     threadCounter <- newCounter
     -- Wouldn't <$$> be nice here...
-    modifyMVar_ rcuStateThreadCountersV $ return . (threadCounter :)
+    withMVar rcuStateThreadCountersLockV $ \ _ -> writeSRefIO rcuStateThreadCountersR . (threadCounter :) =<< readSRefIO rcuStateThreadCountersR
+    storeLoadBarrier
 
     -- Spawn the new thread, whose return value goes in @result@.
-    tid <- forkIO $ do
+    let frk = case rcuStatePinned of
+                   Just i -> forkOn i
+                   Nothing -> forkOS
+    tid <- frk $ do
       x <- m $ s { rcuStateMyCounter = threadCounter }
       putMVar result x
 
@@ -291,7 +294,7 @@ instance MonadRCU (SRef s) (RCU s) where
       -- and remove this counter from the list writers poll.
       writeBarrier
       writeCounter threadCounter offline
-      modifyMVar_ rcuStateThreadCountersV $ return . delete threadCounter
+      withMVar rcuStateThreadCountersLockV $ \ _ -> writeSRefIO rcuStateThreadCountersR . delete threadCounter =<< readSRefIO rcuStateThreadCountersR
     return (RCUThread tid result)
   {-# INLINE forking #-}
 
@@ -300,13 +303,13 @@ instance MonadRCU (SRef s) (RCU s) where
 
   reading (ReadingRCU m) = RCU $ \ s@RCUState { rcuStateMyCounter
                                               , rcuStateGlobalCounter } -> do
-    mc <- readCounter rcuStateMyCounter
+    --mc <- readCounter rcuStateMyCounter
     -- If this thread was offline, take a snapshot of the global counter so
     -- writers will wait.
-    when (mc == offline) $ do
-      writeCounter rcuStateMyCounter =<< readCounter rcuStateGlobalCounter   
-      -- Make sure that the counter goes online before reads begin.
-      storeLoadBarrier
+    --when (mc == offline) $ do
+    writeCounter rcuStateMyCounter =<< readCounter rcuStateGlobalCounter   
+    -- Make sure that the counter goes online before reads begin.
+    storeLoadBarrier
     
     -- Run a read-side critical section.
     x <- m s
@@ -314,7 +317,8 @@ instance MonadRCU (SRef s) (RCU s) where
     -- Announce a quiescent state after the read-side critical section.
     -- TODO: Make this tunable/optional.
     storeLoadBarrier
-    writeCounter rcuStateMyCounter =<< readCounter rcuStateGlobalCounter
+    --writeCounter rcuStateMyCounter =<< readCounter rcuStateGlobalCounter
+    writeCounter rcuStateMyCounter offline
     storeLoadBarrier
     
     -- Return the result of the read-side critical section.
@@ -344,5 +348,12 @@ instance MonadIO (RCU s) where
 -- | Run an RCU computation.
 runRCU :: (forall s. RCU s a) -> IO a
 runRCU m = do
-  unRCU m =<< RCUState <$> newCounter <*> newCounter <*> newMVar [] <*> newMVar ()
+  unRCU m =<< RCUState <$> newCounter <*> newIORef [] <*> newMVar () <*> newMVar ()
+                       <*> newCounter <*> pure Nothing
 {-# INLINE runRCU #-}
+
+-- | Run an RCU computation in a thread pinned to a particular core.
+runOnRCU :: Int -> (forall s. RCU s a) -> IO a
+runOnRCU i m = do
+  unRCU m =<< RCUState <$> newCounter <*> newIORef [] <*> newMVar () <*> newMVar ()
+                       <*> newCounter <*> pure (Just i)
