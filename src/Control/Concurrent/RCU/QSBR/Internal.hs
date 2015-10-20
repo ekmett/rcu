@@ -211,7 +211,8 @@ instance MonadWriting (SRef s) (WritingRCU s) where
 synchronizeIO :: RCUState -> IO () 
 synchronizeIO RCUState { rcuStateGlobalCounter
                        , rcuStateMyCounter
-                       , rcuStateThreadCountersR } = do
+                       , rcuStateThreadCountersR
+                       , rcuStatePinned } = do
   -- Get this thread's counter.
   mc <- readCounter rcuStateMyCounter
   -- If this thread is not offline already, take it offline.
@@ -222,13 +223,15 @@ synchronizeIO RCUState { rcuStateGlobalCounter
   threadCounters <- readSRefIO rcuStateThreadCountersR
   -- Increment the global counter.
   gc' <- incCounter rcuStateGlobalCounter
+  let busyWaitPeriod = case rcuStatePinned of Just _  -> 1000
+                                              Nothing -> 2
   -- Wait for each online reader to copy the new global counter.
   let waitForThread !(n :: Word64) threadCounter = do
         tc <- readCounter threadCounter
         when (tc /= offline && tc /= gc') $ do 
           -- spin for 999 iterations before sleeping
-          if n `mod` 1000 == 0
-             then threadDelay 1
+          if n `mod` busyWaitPeriod == 0
+             then yield
              else pause -- TODO: Figure out how to make GHC emit e.g. "rep; nop" 
                         -- inline to tell the CPU we're in a busy-wait loop.  
                         -- For now, FFI call a C function with inline "rep; nop".
