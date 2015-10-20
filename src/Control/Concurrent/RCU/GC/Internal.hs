@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE LambdaCase #-}
@@ -30,9 +31,16 @@ module Control.Concurrent.RCU.GC.Internal
   , RCUThread(..)
   , RCU(..)
   , runRCU
+  , runOnRCU
   , ReadingRCU(..)
   , WritingRCU(..)
   , RCUState(..)
+#if BENCHMARKS
+  , unRCU
+  , runWritingRCU
+  , runReadingRCU
+  , writeSRefIO
+#endif
   ) where
 
 import Control.Applicative
@@ -109,11 +117,14 @@ newVersion = Version <$> newIORef ()
 
 -- | State for an RCU computation.
 data RCUState = RCUState
-  { rcuStateGlobalCounter   :: {-# UNPACK #-} !Counter
+  { -- * Global state
+    rcuStateGlobalCounter   :: {-# UNPACK #-} !Counter
   , rcuStateGlobalVersion   :: {-# UNPACK #-} !(IORef Version)
-  , rcuStateMyCounter       :: {-# UNPACK #-} !Counter  -- each thread's state gets its own counter
   , rcuStateThreadCountersV :: {-# UNPACK #-} !(MVar [Counter])
   , rcuStateWriterLockV     :: {-# UNPACK #-} !(MVar ())
+    -- * Thread state
+  , rcuStateMyCounter       :: {-# UNPACK #-} !Counter  -- each thread's state gets its own counter
+  , rcuStatePinned          ::                !(Maybe Int)
   }
 
 --------------------------------------------------------------------------------
@@ -307,7 +318,20 @@ runRCU m = do
   v <- newVersion
   unRCU m =<< RCUState <$> newCounter 0
                        <*> newIORef v
-                       <*> newCounter 0
                        <*> newMVar []
                        <*> newMVar ()
+                       <*> newCounter 0
+                       <*> pure Nothing
 {-# INLINE runRCU #-}
+
+-- | Run an RCU computation in a thread pinned to a particular core.
+runOnRCU :: Int -> (forall s. RCU s a) -> IO a
+runOnRCU i m = do
+  v <- newVersion
+  unRCU m =<< RCUState <$> newCounter 0
+                       <*> newIORef v
+                       <*> newMVar []
+                       <*> newMVar ()
+                       <*> newCounter 0
+                       <*> pure (Just i)
+{-# INLINE runOnRCU #-}

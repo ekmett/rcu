@@ -4,18 +4,45 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 import Control.Concurrent
-import Control.Concurrent.RCU.MODE
+import Control.Concurrent.RCU.MODE.Internal
 import Control.Concurrent.RCU.Class
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
-import Control.Monad (forM)
+import Control.Monad
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.List (intercalate)
 import Data.Monoid ((<>))
 import Data.Word (Word64)
 import Options.Applicative (auto, execParser, fullDesc, help, info, long, metavar, option, progDesc, short)
 import Prelude hiding (read)
-import System.CPUTime.Rdtsc
+
+#if UNBOUND
+import Data.Time (UTCTime(..), Day(..), NominalDiffTime, diffUTCTime, getCurrentTime)
+
+type TimeT = NominalDiffTime
+
+timer :: IO UTCTime
+timer = getCurrentTime
+
+timerDiff :: UTCTime -> UTCTime -> TimeT
+timerDiff = diffUTCTime
+
+timeZero :: TimeT
+timeZero = let t = UTCTime (ModifiedJulianDay 0) 0 in t `diffUTCTime` t
+#else
+import System.CPUTime.Rdtsc (rdtsc)
+
+type TimeT = Word64
+
+timer :: IO Word64
+timer = rdtsc
+
+timerDiff :: TimeT -> TimeT -> TimeT
+timerDiff = (-)
+
+timeZero :: TimeT
+timeZero = 0
+#endif
 
 data List s a = Nil | Cons a (SRef s (List s a))
 
@@ -42,13 +69,20 @@ reader rf !acc hd = do
         then return acc'
         else reader rf acc' hd
 
-writer :: Integer -> WritingRCU s Word64 -> Word64 -> WritingRCU s Word64
-writer 0  _ !acc = return acc
-writer !n m !acc = do d <- m
-                      writer (pred n) m (acc + d)
+writer :: Int -> WritingRCU s TimeT -> WritingRCU s TimeT
+writer n m = do
+#if MEASURE_SYNCHRONIZE
+  helper n m timeZero
+  where helper 0  _ !acc = return acc
+        helper !n m !acc = do d <- m
+                              helper (pred n) m (acc + d)
+#else
+  replicateM_ n m
+  return timeZero
+#endif
                      
 
-moveDback :: SRef s (List s a) -> WritingRCU s Word64
+moveDback :: SRef s (List s a) -> WritingRCU s TimeT
 moveDback rl = WritingRCU $ \ s -> do
   (rc, ne) <- flip runWritingRCU s $ do
     Cons _a rb <- readSRef rl
@@ -61,20 +95,20 @@ moveDback rl = WritingRCU $ \ s -> do
     writeSRef rb $ Cons c rb'
     return (rc, ne)
 #if MEASURE_SYNCHRONIZE
-  beg <- rdtsc
+  beg <- timer
 #endif
   -- any reader who starts during this grace period 
   -- sees either "ABCDE" or "ACBCDE"
   runWritingRCU synchronize s
 #if MEASURE_SYNCHRONIZE
-  end <- rdtsc
+  end <- timer
+  let d = end `timerDiff` beg
 #else
-  let beg = 0
-      end = 0
+  let d = timeZero
 #endif
   -- unlink the old C
   flip runWritingRCU s $ do writeSRef rc ne
-                            return $ end - beg
+                            return d
 
 testList :: RCU s (SRef s (List s Word64))
 testList = helper 4 =<< newSRef Nil
@@ -99,43 +133,58 @@ main = do
     rf  <- unRCU (newSRef False) s
     -- spawn nReaders readers, each takes snapshots of the list until the writer has finished
     rts <- forM [2..fromIntegral nReaders + 1] $ \ i -> flip unRCU (s { rcuStatePinned = Just i }) $ forking $ reading $ ReadingRCU 
-         $ \ s -> do beg <- rdtsc
-                     x   <- evaluate . force =<< unRCU (reader rf 0 hd) s -- how long do the snapshots take?
-                     mid <- rdtsc
-                     _   <- evaluate . force $ x -- how long does walking over the result take?
-                     end <- rdtsc
-                     return ( x
-                            , mid - beg
-                            , end - mid )
+         $ \ s' -> do beg <- timer
+                      x   <- evaluate . force =<< unRCU (reader rf 0 hd) s' -- how long do the snapshots take?
+                      mid <- timer
+                      _   <- evaluate . force $ x -- how long does walking over the result take?
+                      end <- timer
+                      return ( x
+                             , mid `timerDiff` beg
+                             , end `timerDiff` mid )
     -- spawn a writer to move a node from a later position to an earlier position nUpdates times
     wt  <- flip unRCU (s { rcuStatePinned = Just 1 }) $ forking $ writing $ WritingRCU 
-         $ \ s -> do beg <- rdtsc
-                     x   <- evaluate . force =<< runWritingRCU (writer nUpdates (moveDback hd) 0) s
-                     runWritingRCU (writeSRef rf True) s
-                     mid <- rdtsc
-                     _   <- evaluate . force $ x
-                     end <- rdtsc
-                     return ( fromIntegral x / fromIntegral nUpdates :: Double
-                            , mid - beg
-                            , end - mid )
+         $ \ s' -> do beg <- timer
+                      x   <- evaluate . force =<< runWritingRCU (writer (fromIntegral nUpdates) (moveDback hd)) s'
+                      runWritingRCU (writeSRef rf True) s'
+                      mid <- timer
+                      _   <- evaluate . force $ x
+                      end <- timer
+#if UNBOUND
+                      let d = x
+#else
+                      let d = fromIntegral x :: Double
+#endif
+                      return ( d / fromIntegral nUpdates
+                             , mid `timerDiff` beg
+                             , end `timerDiff` mid )
     -- wait for the readers to finish
     ods <- mapM (\ rt -> unRCU (joining rt) s) rts
     -- wait for the writer to finish
-    (wfrd :: Double, wd, wfd) <- unRCU (joining wt) s
+    (wfrd, wd, wfd) <- unRCU (joining wt) s
     return (ods, wfrd, wd, wfd)
   let outs = map a ods
-      rds  = map b ods :: [Word64]
-      rfds = map c ods :: [Word64]
+      rds  = map b ods :: [TimeT]
+      rfds = map c ods :: [TimeT]
       a (x,_,_) = x
       b (_,y,_) = y
       c (_,_,z) = z
   putStrLn $ "dups by thread:" ++ (intercalate ", " $ zipWith (\ i dups -> show i ++ ": " ++ show dups) [(1 :: Integer)..] outs)
   putStrLn $ "average dups per update: " ++ show (fromIntegral (sum outs) / nTotal)
+#if UNBOUND
+  putStrLn $ "times in SECONDS"
+#else
+  putStrLn $ "times in TICKS"
+#endif
   putStrLn $ "reader times: " ++ show rds
   putStrLn $ "reader evaluate . force times: " ++ show rfds
   putStrLn $ "writer time: " ++ show wd
   putStrLn $ "writer evaluate . force time: " ++ show wfd
-  let aud = fromIntegral (wd - wfd) / fromIntegral nUpdates :: Double
+#if UNBOUND
+  let wtd = wd - wfd
+#else
+  let wtd = fromIntegral $ wd - wfd :: Double
+#endif
+  let aud = wtd / fromIntegral nUpdates
   putStrLn $ "average writer update time: " ++ show aud
 #if MEASURE_SYNCHRONIZE
   putStrLn $ "average synchronize time: " ++ show wfrd

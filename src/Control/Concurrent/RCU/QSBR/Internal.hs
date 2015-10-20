@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE BangPatterns #-}
@@ -34,7 +35,13 @@ module Control.Concurrent.RCU.QSBR.Internal
   , ReadingRCU(..)
   , WritingRCU(..)
   , RCUState(..)
+#if BENCHMARKS
+  , unRCU
+  , runWritingRCU
+  , runReadingRCU
   , writeSRefIO
+  , RCUState(..)
+#endif
   ) where
 
 import Control.Applicative
@@ -348,12 +355,20 @@ instance MonadIO (RCU s) where
 -- | Run an RCU computation.
 runRCU :: (forall s. RCU s a) -> IO a
 runRCU m = do
-  unRCU m =<< RCUState <$> newCounter <*> newIORef [] <*> newMVar () <*> newMVar ()
-                       <*> newCounter <*> pure Nothing
+  unRCU m =<< RCUState <$> newCounter
+                       <*> newIORef []
+                       <*> newMVar ()
+                       <*> newMVar ()
+                       <*> newCounter
+                       <*> pure Nothing
 {-# INLINE runRCU #-}
 
 -- | Run an RCU computation in a thread pinned to a particular core.
 runOnRCU :: Int -> (forall s. RCU s a) -> IO a
 runOnRCU i m = do
-  unRCU m =<< RCUState <$> newCounter <*> newIORef [] <*> newMVar () <*> newMVar ()
-                       <*> newCounter <*> pure (Just i)
+  unRCU m =<< RCUState <$> newCounter
+                       <*> newIORef []
+                       <*> newMVar ()
+                       <*> newMVar ()
+                       <*> newCounter
+                       <*> pure (Just i)
