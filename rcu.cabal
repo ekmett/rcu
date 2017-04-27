@@ -11,7 +11,7 @@ homepage:      http://github.com/ekmett/rcu/
 bug-reports:   http://github.com/ekmett/rcu/issues
 copyright:     Copyright (C) 2015 Edward A. Kmett, Theodore Rhys Cooper
 build-type:    Custom
-tested-with:   GHC == 7.10.1, GHC == 7.10.2
+tested-with:   GHC == 7.10.3, GHC == 8.0.2
 synopsis:      Read-Copy-Update for Haskell
 description:   Read-Copy-Update for Haskell
 
