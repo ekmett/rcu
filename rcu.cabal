@@ -45,6 +45,12 @@ flag measure-synchronize
   default: False
   manual: True
 
+custom-setup
+  setup-depends:
+    base          >= 4 && < 5,
+    Cabal,
+    cabal-doctest >= 1 && < 1.1
+
 library
   build-depends:
     atomic-primops >= 0.8,
@@ -455,9 +461,7 @@ test-suite doctests
   else
     build-depends:
       base >= 4.8,
-      directory      >= 1.0,
-      doctest        >= 0.9.1,
-      filepath,
+      doctest >= 0.11.1 && < 0.12,
       parallel
 
 test-suite hlint
