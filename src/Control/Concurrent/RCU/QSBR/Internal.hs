@@ -19,7 +19,7 @@
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett and Ted Cooper
 -- License     :  BSD-style (see the file LICENSE)
--- Maintainer  :  Edward Kmett <ekmett@gmail.com>, 
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>,
 --                Ted Cooper <anthezium@gmail.com>
 -- Stability   :  experimental
 -- Portability :  non-portable
@@ -51,8 +51,8 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Primitive
 import Control.Parallel
-import Data.Atomics 
-import Data.IORef 
+import Data.Atomics
+import Data.IORef
 import Data.List
 import Data.Primitive
 import Foreign
@@ -125,12 +125,12 @@ incCounter c = do
 
 -- | State for an RCU computation.
 data RCUState = RCUState
-  { -- * Global state
+  { -- | Global state
     rcuStateGlobalCounter       :: {-# UNPACK #-} !Counter
   , rcuStateThreadCountersR     :: {-# UNPACK #-} !(IORef [Counter])
   , rcuStateThreadCountersLockV :: {-# UNPACK #-} !(MVar ())
   , rcuStateWriterLockV         :: {-# UNPACK #-} !(MVar ())
-    -- * Thread state
+    -- | Thread state
   , rcuStateMyCounter           :: {-# UNPACK #-} !Counter
   , rcuStatePinned              ::                !(Maybe Int)
   }
@@ -140,7 +140,7 @@ data RCUState = RCUState
 --------------------------------------------------------------------------------
 
 -- | This is the basic read-side critical section for an RCU computation
-newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: RCUState -> IO a } 
+newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: RCUState -> IO a }
   deriving Functor
 
 instance Applicative (ReadingRCU s) where
@@ -208,7 +208,7 @@ instance MonadWriting (SRef s) (WritingRCU s) where
   {-# INLINE writeSRef #-}
   synchronize = WritingRCU synchronizeIO
 
-synchronizeIO :: RCUState -> IO () 
+synchronizeIO :: RCUState -> IO ()
 synchronizeIO RCUState { rcuStateGlobalCounter
                        , rcuStateMyCounter
                        , rcuStateThreadCountersR
@@ -219,7 +219,7 @@ synchronizeIO RCUState { rcuStateGlobalCounter
   when (mc /= offline) $ writeCounter rcuStateMyCounter offline
 
   -- Loop through thread counters, waiting for online threads to catch up
-  -- and skipping offline threads.  
+  -- and skipping offline threads.
   threadCounters <- readSRefIO rcuStateThreadCountersR
   -- Increment the global counter.
   gc' <- incCounter rcuStateGlobalCounter
@@ -228,14 +228,14 @@ synchronizeIO RCUState { rcuStateGlobalCounter
   -- Wait for each online reader to copy the new global counter.
   let waitForThread !(n :: Word64) threadCounter = do
         tc <- readCounter threadCounter
-        when (tc /= offline && tc /= gc') $ do 
+        when (tc /= offline && tc /= gc') $ do
           -- spin for 999 iterations before sleeping
           if n `mod` busyWaitPeriod == 0
              then yield
-             else pause -- TODO: Figure out how to make GHC emit e.g. "rep; nop" 
-                        -- inline to tell the CPU we're in a busy-wait loop.  
+             else pause -- TODO: Figure out how to make GHC emit e.g. "rep; nop"
+                        -- inline to tell the CPU we're in a busy-wait loop.
                         -- For now, FFI call a C function with inline "rep; nop".
-                        -- This approach is apparently about 10 times heavier than 
+                        -- This approach is apparently about 10 times heavier than
                         -- just inlining the instruction in your program text :(
                         -- urcu uses "caa_cpu_relax()" decorated with a compiler
                         -- reordering barrier in this case.
@@ -317,20 +317,20 @@ instance MonadRCU (SRef s) (RCU s) where
     -- If this thread was offline, take a snapshot of the global counter so
     -- writers will wait.
     --when (mc == offline) $ do
-    writeCounter rcuStateMyCounter =<< readCounter rcuStateGlobalCounter   
+    writeCounter rcuStateMyCounter =<< readCounter rcuStateGlobalCounter
     -- Make sure that the counter goes online before reads begin.
     storeLoadBarrier
-    
+
     -- Run a read-side critical section.
     x <- m s
-    
+
     -- Announce a quiescent state after the read-side critical section.
     -- TODO: Make this tunable/optional.
     storeLoadBarrier
     --writeCounter rcuStateMyCounter =<< readCounter rcuStateGlobalCounter
     writeCounter rcuStateMyCounter offline
     storeLoadBarrier
-    
+
     -- Return the result of the read-side critical section.
     return x
   {-# INLINE reading #-}

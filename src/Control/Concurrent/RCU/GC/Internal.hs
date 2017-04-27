@@ -19,7 +19,7 @@
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett, Paul Khuong and Ted Cooper
 -- License     :  BSD-style (see the file LICENSE)
--- Maintainer  :  Edward Kmett <ekmett@gmail.com>, 
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>,
 --                Ted Cooper <anthezium@gmail.com>
 -- Stability   :  experimental
 -- Portability :  non-portable
@@ -50,8 +50,8 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Primitive
 import Control.Parallel
-import Data.Atomics 
-import Data.IORef 
+import Data.Atomics
+import Data.IORef
 import Data.List
 import Data.Primitive
 import Prelude hiding (read, Read)
@@ -117,12 +117,12 @@ newVersion = Version <$> newIORef ()
 
 -- | State for an RCU computation.
 data RCUState = RCUState
-  { -- * Global state
+  { -- | Global state
     rcuStateGlobalCounter   :: {-# UNPACK #-} !Counter
   , rcuStateGlobalVersion   :: {-# UNPACK #-} !(IORef Version)
   , rcuStateThreadCountersV :: {-# UNPACK #-} !(MVar [Counter])
   , rcuStateWriterLockV     :: {-# UNPACK #-} !(MVar ())
-    -- * Thread state
+    -- | Thread state
   , rcuStateMyCounter       :: {-# UNPACK #-} !Counter  -- each thread's state gets its own counter
   , rcuStatePinned          ::                !(Maybe Int)
   }
@@ -132,7 +132,7 @@ data RCUState = RCUState
 --------------------------------------------------------------------------------
 
 -- | This is the basic read-side critical section for an RCU computation
-newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: RCUState -> IO a } 
+newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: RCUState -> IO a }
   deriving Functor
 
 instance Applicative (ReadingRCU s) where
@@ -200,7 +200,7 @@ instance MonadWriting (SRef s) (WritingRCU s) where
   {-# INLINE writeSRef #-}
   synchronize = WritingRCU synchronizeIO
 
-synchronizeIO :: RCUState -> IO () 
+synchronizeIO :: RCUState -> IO ()
 synchronizeIO s = do
   withMVar (rcuStateThreadCountersV s) $ \ threadCounters -> do
     gc' <- incCounter (rcuStateGlobalCounter s)
