@@ -1,6 +1,6 @@
 ## rcu
 
-[![Build Status](https://secure.travis-ci.org/ekmett/rcu.png?branch=master)](http://travis-ci.org/ekmett/rcu)
+[![Hackage](https://img.shields.io/hackage/v/rcu.svg)](https://hackage.haskell.org/package/rcu) [![Build Status](https://secure.travis-ci.org/ekmett/rcu.png?branch=master)](http://travis-ci.org/ekmett/rcu)
 
 This package is an exploration of Read-Copy Update in Haskell based on [Relativistic Programming in Haskell](http://web.cecs.pdx.edu/~walpole/papers/haskell2015.pdf) by Cooper and Walpole.  It includes a sound QSBR-based implementation and an attempt at an STM-based implementation.
 
