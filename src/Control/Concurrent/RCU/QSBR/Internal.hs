@@ -3,12 +3,10 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -357,7 +355,7 @@ instance MonadIO (RCU s) where
 
 -- | Run an RCU computation.
 runRCU :: (forall s. RCU s a) -> IO a
-runRCU m = do
+runRCU m =
   unRCU m =<< RCUState <$> newCounter
                        <*> newIORef []
                        <*> newMVar ()
@@ -368,7 +366,7 @@ runRCU m = do
 
 -- | Run an RCU computation in a thread pinned to a particular core.
 runOnRCU :: Int -> (forall s. RCU s a) -> IO a
-runOnRCU i m = do
+runOnRCU i m =
   unRCU m =<< RCUState <$> newCounter
                        <*> newIORef []
                        <*> newMVar ()
