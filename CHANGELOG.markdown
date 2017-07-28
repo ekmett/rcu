@@ -1,4 +1,4 @@
-## next
+## 0.2.1
 * Support `doctest-0.12`
 
 ## 0.2
