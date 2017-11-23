@@ -34,7 +34,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Reader
-import Prelude hiding (read, Read)
+import Prelude
 import qualified Control.Monad.Trans.RWS.Lazy as Lazy
 import qualified Control.Monad.Trans.RWS.Strict as Strict
 import qualified Control.Monad.Trans.State.Lazy as Lazy
@@ -106,7 +106,7 @@ class MonadReading s m => MonadWriting s m | m -> s where
 
   -- | Synchronize with other writers.
   --
-  -- No other writer can straddle this time bound. It will either see writes from before, or writes after, but never 
+  -- No other writer can straddle this time bound. It will either see writes from before, or writes after, but never
   -- some of both!
   synchronize :: m ()
   default synchronize :: (m ~ t n, MonadTrans t, MonadWriting s n) => m ()

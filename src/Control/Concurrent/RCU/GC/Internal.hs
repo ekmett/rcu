@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -51,7 +50,7 @@ import Data.Atomics
 import Data.IORef
 import Data.List
 import Data.Primitive
-import Prelude hiding (read, Read)
+import Prelude hiding (Read(..))
 import System.Mem
 
 

@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -55,7 +54,7 @@ import Data.List
 import Data.Primitive
 import Foreign
 
-import Prelude hiding (read, Read)
+import Prelude hiding (Read(..))
 
 foreign import ccall unsafe "pause.h" pause :: IO ()
 
