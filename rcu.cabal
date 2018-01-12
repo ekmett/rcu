@@ -19,6 +19,7 @@ extra-source-files:
   examples/*.hs
   CHANGELOG.markdown
   README.markdown
+  HLint.hs
   Warning.hs
 
 source-repository head
