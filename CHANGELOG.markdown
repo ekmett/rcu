@@ -1,3 +1,8 @@
+## 0.2.2 [2018.02.06]
+---------------------
+* Include `HLint.hs` with the tarball distribution, fixing the `hlint`
+  test suite.
+
 ## 0.2.1
 * Support `doctest-0.12`
 
