@@ -53,6 +53,7 @@ import Data.IORef
 import Data.List
 import Data.Primitive
 import Foreign
+import qualified Control.Monad.Fail as Fail
 
 import Prelude hiding (Read(..))
 
@@ -149,7 +150,10 @@ instance Monad (ReadingRCU s) where
   ReadingRCU m >>= f = ReadingRCU $ \ s -> do
     a <- m s
     runReadingRCU (f a) s
-  fail s = ReadingRCU $ \ _ -> fail s
+  fail = Fail.fail
+
+instance Fail.MonadFail (ReadingRCU s) where
+  fail s = ReadingRCU $ \ _ -> Fail.fail s
 
 instance Alternative (ReadingRCU s) where
   empty = ReadingRCU $ \ _ -> empty
@@ -183,7 +187,10 @@ instance Monad (WritingRCU s) where
   WritingRCU m >>= f = WritingRCU $ \ s -> do
     a <- m s
     runWritingRCU (f a) s
-  fail s = WritingRCU $ \ _ -> fail s
+  fail = Fail.fail
+
+instance Fail.MonadFail (WritingRCU s) where
+  fail s = WritingRCU $ \ _ -> Fail.fail s
 
 instance Alternative (WritingRCU s) where
   empty = WritingRCU $ \ _ -> empty

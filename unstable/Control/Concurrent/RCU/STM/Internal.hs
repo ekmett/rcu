@@ -38,6 +38,7 @@ import Control.Monad.IO.Class
 import Data.Coerce
 import Data.Int
 import Prelude hiding (read, Read)
+import qualified Control.Monad.Fail as Fail
 
 --------------------------------------------------------------------------------
 -- * Shared References
@@ -52,7 +53,8 @@ newtype SRef s a = SRef { unSRef :: TVar a }
 --------------------------------------------------------------------------------
 
 -- | This is the basic read-side critical section for an RCU computation
-newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: IO a } deriving (Functor, Applicative, Monad)
+newtype ReadingRCU s a = ReadingRCU { runReadingRCU :: IO a }
+  deriving (Functor, Applicative, Monad, Fail.MonadFail)
 
 instance MonadNew (SRef s) (ReadingRCU s) where
   newSRef = r where
@@ -82,6 +84,9 @@ instance Monad (WritingRCU s) where
   WritingRCU m >>= f = WritingRCU $ \ c -> do
     a <- m c
     runWritingRCU (f a) c
+  fail = Fail.fail
+
+instance Fail.MonadFail (WritingRCU s) where
   fail s = WritingRCU $ \ _ -> fail s
 
 instance Alternative (WritingRCU s) where
