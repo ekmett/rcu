@@ -1,5 +1,5 @@
-## next [????.??.??]
---------------------
+## 0.2.3 [2018.08.01]
+---------------------
 * Add `MonadFail` instances for `ReadingRCU` and `WritingRCU`.
 
 ## 0.2.2 [2018.02.06]
