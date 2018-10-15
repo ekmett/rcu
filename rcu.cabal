@@ -14,7 +14,7 @@ build-type:    Custom
 tested-with:   GHC == 7.10.3
              , GHC == 8.0.2
              , GHC == 8.2.2
-             , GHC == 8.4.3
+             , GHC == 8.4.4
              , GHC == 8.6.1
 synopsis:      Read-Copy-Update for Haskell
 description:   Read-Copy-Update for Haskell.
@@ -471,17 +471,3 @@ test-suite doctests
       doctest >= 0.11.1 && < 0.17,
       parallel,
       rcu
-
-test-suite hlint
-  type: exitcode-stdio-1.0
-  main-is: hlint.hs
-  ghc-options: -w -threaded -rtsopts -with-rtsopts=-N
-  hs-source-dirs: tests
-  default-language: Haskell2010
-
-  if !flag(test-hlint)
-    buildable: False
-  else
-    build-depends:
-      base,
-      hlint >= 1.7
