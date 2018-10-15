@@ -2,7 +2,7 @@ name:          rcu
 category:      Data
 version:       0.2.3
 license:       BSD3
-cabal-version: >= 1.22
+cabal-version: 1.22
 license-file:  LICENSE
 author:        Ted Cooper and Edward A. Kmett
 maintainer:    Edward A. Kmett <ekmett@gmail.com>, Ted Cooper <anthezium@gmail.com>
@@ -32,11 +32,6 @@ source-repository head
 
 -- You can disable the doctests test suite with -f-test-doctests
 flag test-doctests
-  default: True
-  manual: True
-
--- You can disable the doctests test suite with -f-test-doctests
-flag test-hlint
   default: True
   manual: True
 
