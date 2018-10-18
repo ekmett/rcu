@@ -88,13 +88,13 @@ library
 executable MoveStringSTM
   main-is: MoveString.hs
   cpp-options: -DMODE=STM
+  hs-source-dirs: examples
+  ghc-options: -threaded -Wall -feager-blackholing -fwarn-tabs "-with-rtsopts=-N -qa -qb -qm -s"
+  default-language: Haskell2010
   if !flag(unstable)
     buildable: False
   else
     build-depends: base, rcu, transformers
-    hs-source-dirs: examples
-    ghc-options: -threaded -Wall -feager-blackholing -fwarn-tabs "-with-rtsopts=-N -qa -qb -qm -s"
-    default-language: Haskell2010
 
 executable MoveStringQSBR
   main-is: MoveString.hs
