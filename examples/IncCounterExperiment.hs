@@ -4,7 +4,7 @@
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett and Ted Cooper
 -- License     :  BSD-style (see the file LICENSE)
--- Maintainer  :  Edward Kmett <ekmett@gmail.com>, 
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>,
 --                Ted Cooper <anthezium@gmail.com>
 -- Stability   :  experimental
 -- Portability :  non-portable
@@ -51,13 +51,13 @@ writeCounter (Counter c) w = writeByteArray c 0 w
 {-# INLINE writeCounter #-}
 
 incCounterAtomic :: Counter -> IO Word64
-incCounterAtomic (Counter (MutableByteArray c)) = primitive $ \ s -> 
+incCounterAtomic (Counter (MutableByteArray c)) = primitive $ \ s ->
   case fetchAddIntArray# c 0# 2# s of
        (# s', r #) -> (# s', W64# (int2Word# r) #)
 {-# INLINE incCounterAtomic #-}
 
 incCounterNonAtomicFancy :: Counter -> IO Word64
-incCounterNonAtomicFancy (Counter (MutableByteArray c)) = primitive $ \ s -> 
+incCounterNonAtomicFancy (Counter (MutableByteArray c)) = primitive $ \ s ->
   case readWord64Array# c 0# s of
        (# s', r #) -> case plusWord# r (int2Word# 2#) of
                            r' -> case writeWord64Array# c 0# r' s' of
@@ -73,10 +73,10 @@ incCounterNonAtomic c = do
 
 main :: IO ()
 main = defaultMain [ bgroup "incCounterAtomic"         $ bunches incCounterAtomic
-                   , bgroup "incCounterNonAtomicFancy" $ bunches incCounterNonAtomicFancy 
+                   , bgroup "incCounterNonAtomicFancy" $ bunches incCounterNonAtomicFancy
                    , bgroup "incCounterNonAtomic"      $ bunches incCounterNonAtomic ]
-  where bunches m = [ bench (show n) 
+  where bunches m = [ bench (show n)
                     $ nfIO $ do c <- newCounter
                                 forM_ [1..n] $ \ _ -> m c
-                    | n <- map ((10 :: Word64) ^) [(6 :: Word64)..7] ] 
+                    | n <- map ((10 :: Word64) ^) [(6 :: Word64)..7] ]
 
