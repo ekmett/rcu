@@ -59,7 +59,7 @@ checkForDup (acc, dup) (Cons x rn) = checkForDup (acc .|. x, dup || acc .&. x /=
 
 reader :: SRef s Bool -> Integer -> SRef s (List s Word64) -> RCU s Integer
 reader rf !acc hd = do
-     (acc', flag) <- reading $ do dup  <- checkForDup (0, False) =<< readSRef hd 
+     (acc', flag) <- reading $ do dup  <- checkForDup (0, False) =<< readSRef hd
                                   --when dup $ do
                                   --  xs <- snapshot [] =<< readSRef hd
                                   --  trace (show xs) $ return ()
@@ -80,7 +80,7 @@ writer n m = do
   replicateM_ n m
   return timeZero
 #endif
-                     
+
 
 moveDback :: SRef s (List s a) -> WritingRCU s TimeT
 moveDback rl = WritingRCU $ \ s -> do
@@ -97,7 +97,7 @@ moveDback rl = WritingRCU $ \ s -> do
 #if MEASURE_SYNCHRONIZE
   beg <- timer
 #endif
-  -- any reader who starts during this grace period 
+  -- any reader who starts during this grace period
   -- sees either "ABCDE" or "ACBCDE"
   runWritingRCU synchronize s
 #if MEASURE_SYNCHRONIZE
@@ -115,11 +115,11 @@ testList = helper 4 =<< newSRef Nil
   where helper (- 1) tl = return tl
         helper i     tl = helper (pred i) =<< newSRef (Cons (shiftL 1 i) tl)
 
-data Opts = Opts { nReserved :: Integer 
+data Opts = Opts { nReserved :: Integer
                  , nUpdates  :: Integer }
 
 main :: IO ()
-main = do 
+main = do
   Opts { nReserved, nUpdates } <- execParser opts
   nCaps <- getNumCapabilities
   putStrLn $ "nCaps: " ++ show nCaps
@@ -132,7 +132,7 @@ main = do
     -- initialize flag writer uses to stop readers
     rf  <- unRCU (newSRef False) s
     -- spawn nReaders readers, each takes snapshots of the list until the writer has finished
-    rts <- forM [2..fromIntegral nReaders + 1] $ \ i -> flip unRCU (s { rcuStatePinned = Just i }) $ forking $ reading $ ReadingRCU 
+    rts <- forM [2..fromIntegral nReaders + 1] $ \ i -> flip unRCU (s { rcuStatePinned = Just i }) $ forking $ reading $ ReadingRCU
          $ \ s' -> do beg <- timer
                       x   <- evaluate . force =<< unRCU (reader rf 0 hd) s' -- how long do the snapshots take?
                       mid <- timer
@@ -142,7 +142,7 @@ main = do
                              , mid `timerDiff` beg
                              , end `timerDiff` mid )
     -- spawn a writer to move a node from a later position to an earlier position nUpdates times
-    wt  <- flip unRCU (s { rcuStatePinned = Just 1 }) $ forking $ writing $ WritingRCU 
+    wt  <- flip unRCU (s { rcuStatePinned = Just 1 }) $ forking $ writing $ WritingRCU
          $ \ s' -> do beg <- timer
                       x   <- evaluate . force =<< runWritingRCU (writer (fromIntegral nUpdates) (moveDback hd)) s'
                       runWritingRCU (writeSRef rf True) s'
@@ -203,4 +203,4 @@ main = do
                       <> short 'u'
                       <> metavar "M"
                       <> help "Writer thread performs M updates" )
-        
+

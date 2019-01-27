@@ -20,7 +20,7 @@ deleteMiddle :: SRef s (List s a) -> WritingRCU s ()
 deleteMiddle rl = do
   Cons a rn <- readSRef rl
   Cons _ rm <- readSRef rn
-  writeSRef rl $ Cons a rm 
+  writeSRef rl $ Cons a rm
 
 testList :: RCU s (SRef s (List s Int))
 testList = do
@@ -30,7 +30,7 @@ testList = do
   newSRef $ Cons 1 c2
 
 main :: IO ()
-main = do 
+main = do
   outs <- runRCU $ do
     -- initialize list
     head <- testList
@@ -38,9 +38,9 @@ main = do
     rts <- replicateM 8 $ forking $ reading $ reader 100000 0 head
     -- spawn a writer to delete the middle node
     wt  <- forking $ writing $ deleteMiddle head
-    
+
     -- wait for the readers to finish and print snapshots
-    outs <- forM rts $ \rt -> do 
+    outs <- forM rts $ \rt -> do
       v <- joining rt
       return $ show (rcuThreadId rt) ++ ": " ++ show v
     -- wait for the writer to finish
