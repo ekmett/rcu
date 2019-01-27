@@ -168,12 +168,12 @@ main = do
       a (x,_,_) = x
       b (_,y,_) = y
       c (_,_,z) = z
-  putStrLn $ "dups by thread:" ++ (intercalate ", " $ zipWith (\ i dups -> show i ++ ": " ++ show dups) [(1 :: Integer)..] outs)
+  putStrLn "dups by thread:" ++ intercalate ", " (zipWith (\ i dups -> show i ++ ": " ++ show dups) [(1 :: Integer)..] outs)
   putStrLn $ "average dups per update: " ++ show (fromIntegral (sum outs) / nTotal)
 #if UNBOUND
-  putStrLn $ "times in SECONDS"
+  putStrLn "times in SECONDS"
 #else
-  putStrLn $ "times in TICKS"
+  putStrLn "times in TICKS"
 #endif
   putStrLn $ "reader times: " ++ show rds
   putStrLn $ "reader evaluate . force times: " ++ show rfds
