@@ -1,6 +1,6 @@
 name:          rcu
 category:      Data
-version:       0.2.3
+version:       0.2.4
 license:       BSD3
 cabal-version: 1.22
 license-file:  LICENSE
