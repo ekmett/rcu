@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -83,10 +84,12 @@ instance Monad (WritingRCU s) where
   WritingRCU m >>= f = WritingRCU $ \ c -> do
     a <- m c
     runWritingRCU (f a) c
+#if !(MIN_VERSION_base(4,13,0))
   fail = Fail.fail
+#endif
 
 instance Fail.MonadFail (WritingRCU s) where
-  fail s = WritingRCU $ \ _ -> fail s
+  fail s = WritingRCU $ \ _ -> error s
 
 instance Alternative (WritingRCU s) where
   empty = WritingRCU $ \ _ -> empty

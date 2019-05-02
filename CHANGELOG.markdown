@@ -1,3 +1,7 @@
+## next [????.??.??]
+--------------------
+* Support building with `base-4.13` (GHC 8.8).
+
 ## 0.2.3 [2018.08.01]
 ---------------------
 * Add `MonadFail` instances for `ReadingRCU` and `WritingRCU`.

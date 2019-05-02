@@ -140,7 +140,9 @@ instance Monad (ReadingRCU s) where
   ReadingRCU m >>= f = ReadingRCU $ \ s -> do
     a <- m s
     runReadingRCU (f a) s
+#if !(MIN_VERSION_base(4,13,0))
   fail = Fail.fail
+#endif
 
 instance Fail.MonadFail (ReadingRCU s) where
   fail s = ReadingRCU $ \ _ -> Fail.fail s
@@ -177,7 +179,9 @@ instance Monad (WritingRCU s) where
   WritingRCU m >>= f = WritingRCU $ \ s -> do
     a <- m s
     runWritingRCU (f a) s
+#if !(MIN_VERSION_base(4,13,0))
   fail = Fail.fail
+#endif
 
 instance Fail.MonadFail (WritingRCU s) where
   fail s = WritingRCU $ \ _ -> Fail.fail s
