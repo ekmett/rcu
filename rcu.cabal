@@ -21,10 +21,10 @@ synopsis:      Read-Copy-Update for Haskell
 description:   Read-Copy-Update for Haskell.
 
 extra-source-files:
+  .hlint.yaml
   examples/*.hs
   CHANGELOG.markdown
   README.markdown
-  HLint.hs
   Warning.hs
 
 source-repository head
