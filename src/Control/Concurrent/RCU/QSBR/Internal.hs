@@ -301,9 +301,7 @@ instance MonadRCU (SRef s) (RCU s) where
     storeLoadBarrier
 
     -- Spawn the new thread, whose return value goes in @result@.
-    let frk = case rcuStatePinned of
-                   Just i -> forkOn i
-                   Nothing -> forkIO
+    let frk = maybe forkIO forkOn rcuStatePinned
     tid <- frk $ do
       x <- m $ s { rcuStateMyCounter = threadCounter }
       putMVar result x
