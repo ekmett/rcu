@@ -10,7 +10,7 @@ stability:     provisional
 homepage:      http://github.com/ekmett/rcu/
 bug-reports:   http://github.com/ekmett/rcu/issues
 copyright:     Copyright (C) 2015 Edward A. Kmett, Theodore Rhys Cooper
-build-type:    Custom
+build-type:    Simple
 tested-with:   GHC == 7.10.3
              , GHC == 8.0.2
              , GHC == 8.2.2
@@ -26,16 +26,10 @@ extra-source-files:
   examples/*.hs
   CHANGELOG.markdown
   README.markdown
-  Warning.hs
 
 source-repository head
   type: git
   location: git://github.com/ekmett/rcu.git
-
--- You can disable the doctests test suite with -f-test-doctests
-flag test-doctests
-  default: True
-  manual: True
 
 -- Include unstable and/or potentially incorrect implementations.
 flag unstable
@@ -47,12 +41,6 @@ flag unstable
 flag measure-synchronize
   default: False
   manual: True
-
-custom-setup
-  setup-depends:
-    base          >= 4 && < 5,
-    Cabal,
-    cabal-doctest >= 1 && < 1.1
 
 library
   build-depends:
@@ -454,19 +442,3 @@ benchmark TimeSynchronizeGCnoGCPinned
   hs-source-dirs: examples
   ghc-options: -threaded -Wall -fwarn-tabs -feager-blackholing -rtsopts "-with-rtsopts=-N -qa -A1g -I0 -s"
   default-language: Haskell2010
-
-test-suite doctests
-  type:           exitcode-stdio-1.0
-  main-is:        doctests.hs
-  ghc-options:    -Wall -threaded
-  hs-source-dirs: tests
-  default-language: Haskell2010
-
-  if !flag(test-doctests)
-    buildable: False
-  else
-    build-depends:
-      base >= 4.8,
-      doctest >= 0.11.1 && < 0.18,
-      parallel,
-      rcu
