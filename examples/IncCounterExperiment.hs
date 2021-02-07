@@ -11,6 +11,7 @@
 --
 -- Which counter increment is faster?
 -----------------------------------------------------------------------------
+module Main where
 
 import Control.Monad (forM_)
 import Control.Monad.Primitive (primitive)

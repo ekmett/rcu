@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
+module Main where
 
 import Control.Concurrent.RCU.MODE
 import Control.Concurrent.RCU.Class

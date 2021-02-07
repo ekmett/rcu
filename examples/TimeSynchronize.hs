@@ -3,6 +3,8 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+module Main where
+
 import Control.Concurrent
 import Control.Concurrent.RCU.MODE.Internal
 import Control.Concurrent.RCU.Class
@@ -11,7 +13,9 @@ import Control.Exception (evaluate)
 import Control.Monad
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.List (intercalate)
+#if !(MIN_VERSION_base(4,13,0))
 import Data.Monoid ((<>))
+#endif
 import Data.Word (Word64)
 import Options.Applicative (auto, execParser, fullDesc, help, info, long, metavar, option, progDesc, short)
 import Prelude hiding (read)
@@ -126,7 +130,7 @@ main = do
   let nReaders = fromIntegral nCaps - nReserved
   putStrLn $ "reserved: " ++ show nReserved ++ ", readers: " ++ show nReaders ++ ", updates: " ++ show nUpdates
   let nTotal = fromIntegral $ nUpdates * nReaders :: Double
-  (ods, wfrd, wd, wfd) <- runOnRCU 0 $ RCU $ \ s -> do
+  (ods, _wfrd, wd, wfd) <- runOnRCU 0 $ RCU $ \ s -> do
     -- initialize list
     hd  <- unRCU testList s
     -- initialize flag writer uses to stop readers
