@@ -47,7 +47,7 @@ import Control.Monad.Primitive
 import Control.Parallel
 import Data.Atomics
 import Data.IORef
-import Data.List
+import qualified Data.List as L
 import Data.Primitive
 import Prelude hiding (Read(..))
 import System.Mem
@@ -295,7 +295,7 @@ instance MonadRCU (SRef s) (RCU s) where
     tid <- forkIO $ do
       x <- m $ s { rcuStateMyCounter = threadCounter }
       putMVar result x
-      modifyMVar_ (rcuStateThreadCountersV s) $ return . delete threadCounter
+      modifyMVar_ (rcuStateThreadCountersV s) $ return . L.delete threadCounter
     return (RCUThread tid result)
   {-# INLINE forking #-}
 

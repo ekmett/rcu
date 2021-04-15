@@ -50,7 +50,7 @@ import Control.Monad.Primitive
 import Control.Parallel
 import Data.Atomics
 import Data.IORef
-import Data.List
+import qualified Data.List as L
 import Data.Primitive
 import Foreign
 import qualified Control.Monad.Fail as Fail
@@ -316,7 +316,7 @@ instance MonadRCU (SRef s) (RCU s) where
       -- and remove this counter from the list writers poll.
       writeBarrier
       writeCounter threadCounter offline
-      withMVar rcuStateThreadCountersLockV $ \ _ -> writeSRefIO rcuStateThreadCountersR . delete threadCounter =<< readSRefIO rcuStateThreadCountersR
+      withMVar rcuStateThreadCountersLockV $ \ _ -> writeSRefIO rcuStateThreadCountersR . L.delete threadCounter =<< readSRefIO rcuStateThreadCountersR
     return (RCUThread tid result)
   {-# INLINE forking #-}
 
