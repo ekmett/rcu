@@ -135,10 +135,12 @@ instance Applicative (ReadingRCU s) where
   ReadingRCU mf <*> ReadingRCU ma = ReadingRCU $ \ s -> mf s <*> ma s
 
 instance Monad (ReadingRCU s) where
-  return a = ReadingRCU $ \ _ -> pure a
   ReadingRCU m >>= f = ReadingRCU $ \ s -> do
     a <- m s
     runReadingRCU (f a) s
+#if !(MIN_VERSION_base(4,11,0))
+  return a = ReadingRCU $ \ _ -> pure a
+#endif
 #if !(MIN_VERSION_base(4,13,0))
   fail = Fail.fail
 #endif
@@ -174,10 +176,12 @@ instance Applicative (WritingRCU s) where
   WritingRCU mf <*> WritingRCU ma = WritingRCU $ \ s -> mf s <*> ma s
 
 instance Monad (WritingRCU s) where
-  return a = WritingRCU $ \ _ -> pure a
   WritingRCU m >>= f = WritingRCU $ \ s -> do
     a <- m s
     runWritingRCU (f a) s
+#if !(MIN_VERSION_base(4,11,0))
+  return a = WritingRCU $ \ _ -> pure a
+#endif
 #if !(MIN_VERSION_base(4,13,0))
   fail = Fail.fail
 #endif
@@ -258,11 +262,13 @@ newtype RCU s a = RCU { unRCU :: RCUState -> IO a }
   deriving Functor
 
 instance Applicative (RCU s) where
-  pure = return
+  pure a = RCU $ \ _ -> return a
   (<*>) = ap
 
 instance Monad (RCU s) where
+#if !(MIN_VERSION_base(4,11,0))
   return a = RCU $ \ _ -> return a
+#endif
   RCU m >>= f = RCU $ \s -> do
     a <- m s
     unRCU (f a) s
