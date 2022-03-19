@@ -80,7 +80,9 @@ instance Applicative (WritingRCU s) where
   WritingRCU mf <*> WritingRCU ma = WritingRCU $ \c -> mf c <*> ma c
 
 instance Monad (WritingRCU s) where
-  return a = WritingRCU $ \ _ -> pure a
+#if !(MIN_VERSION_base(4,11,0))
+  return = pure
+#endif
   WritingRCU m >>= f = WritingRCU $ \ c -> do
     a <- m c
     runWritingRCU (f a) c
@@ -122,11 +124,13 @@ newtype RCU s a = RCU { unRCU :: TVar Int64 -> IO a }
   deriving Functor
 
 instance Applicative (RCU s) where
-  pure = return
+  pure a = RCU $ \ _ -> pure a
   (<*>) = ap
 
 instance Monad (RCU s) where
-  return a = RCU $ \ _ -> return a
+#if !(MIN_VERSION_base(4,11,0))
+  return = pure
+#endif
   RCU m >>= f = RCU $ \s -> do
     a <- m s
     unRCU (f a) s
