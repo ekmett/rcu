@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
 -----------------------------------------------------------------------------
@@ -54,15 +55,25 @@ writeCounter (Counter c) w = writeByteArray c 0 w
 incCounterAtomic :: Counter -> IO Word64
 incCounterAtomic (Counter (MutableByteArray c)) = primitive $ \ s ->
   case fetchAddIntArray# c 0# 2# s of
-       (# s', r #) -> (# s', W64# (int2Word# r) #)
+       (# s', r #) ->
+#if MIN_VERSION_base(4,17,0)
+         (# s', W64# (wordToWord64# (int2Word# r)) #)
+#else
+         (# s', W64# (int2Word# r) #)
+#endif
 {-# INLINE incCounterAtomic #-}
 
 incCounterNonAtomicFancy :: Counter -> IO Word64
 incCounterNonAtomicFancy (Counter (MutableByteArray c)) = primitive $ \ s ->
   case readWord64Array# c 0# s of
-       (# s', r #) -> case plusWord# r (int2Word# 2#) of
-                           r' -> case writeWord64Array# c 0# r' s' of
-                                      s'' -> (# s'', W64# r' #)
+       (# s', r #) ->
+#if MIN_VERSION_base(4,17,0)
+         case plusWord64# r (wordToWord64# 2##) of
+#else
+         case plusWord# r 2## of
+#endif
+              r' -> case writeWord64Array# c 0# r' s' of
+                         s'' -> (# s'', W64# r' #)
 {-# INLINE incCounterNonAtomicFancy #-}
 
 incCounterNonAtomic :: Counter -> IO Word64

@@ -1,3 +1,6 @@
+## next [????.??.??]
+* Make the `IncCounterExperiment` benchmark compile with GHC 9.4.
+
 ## 0.2.5 [2021.02.17]
 ---------------------
 * The build-type has been changed from `Custom` to `Simple`.
