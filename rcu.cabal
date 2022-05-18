@@ -52,7 +52,7 @@ library
     ghc-prim >= 0.3,
     parallel >= 3.2 && < 3.3,
     primitive >= 0.6,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   exposed-modules:
     Control.Concurrent.RCU.Class
@@ -134,7 +134,7 @@ benchmark TimeSynchronizeQSBR
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=QSBR -DBENCHMARKS -DMEASURE_SYNCHRONIZE
@@ -161,7 +161,7 @@ benchmark TimeSynchronizeGC
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=GC -DBENCHMARKS -DMEASURE_SYNCHRONIZE
@@ -188,7 +188,7 @@ benchmark TimeSynchronizeQSBRUnbound
     primitive >= 0.6,
     rcu,
     time >= 1.5.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=QSBR -DBENCHMARKS -DUNBOUND -DMEASURE_SYNCHRONIZE
@@ -215,7 +215,7 @@ benchmark TimeSynchronizeGCUnbound
     primitive >= 0.6,
     rcu,
     time >= 1.5.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=GC -DBENCHMARKS -DUNBOUND -DMEASURE_SYNCHRONIZE
@@ -242,7 +242,7 @@ benchmark TimeSynchronizeQSBRSingleThread
     primitive >= 0.6,
     rcu,
     time >= 1.5.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=QSBR -DBENCHMARKS -DUNBOUND -DMEASURE_SYNCHRONIZE
@@ -269,7 +269,7 @@ benchmark TimeSynchronizeGCSingleThread
     primitive >= 0.6,
     rcu,
     time >= 1.5.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=GC -DBENCHMARKS -DUNBOUND -DMEASURE_SYNCHRONIZE
@@ -296,7 +296,7 @@ benchmark TimeSynchronizeQSBRPinned
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=QSBR -DBENCHMARKS -DMEASURE_SYNCHRONIZE
@@ -323,7 +323,7 @@ benchmark TimeSynchronizeGCPinned
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=GC -DBENCHMARKS -DMEASURE_SYNCHRONIZE
@@ -350,7 +350,7 @@ benchmark TimeSynchronizeQSBRnoGC
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=QSBR -DBENCHMARKS -DMEASURE_SYNCHRONIZE
@@ -377,7 +377,7 @@ benchmark TimeSynchronizeGCnoGC
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=GC -DBENCHMARKS -DMEASURE_SYNCHRONIZE
@@ -404,7 +404,7 @@ benchmark TimeSynchronizeQSBRnoGCPinned
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=QSBR -DBENCHMARKS -DMEASURE_SYNCHRONIZE
@@ -431,7 +431,7 @@ benchmark TimeSynchronizeGCnoGCPinned
     primitive >= 0.6,
     rcu,
     rdtsc >= 1.3.0.1,
-    transformers >= 0.4 && < 0.6
+    transformers >= 0.4 && < 0.7
 
   if flag(measure-synchronize)
     cpp-options: -DMODE=GC -DBENCHMARKS -DMEASURE_SYNCHRONIZE
