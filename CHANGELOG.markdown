@@ -1,4 +1,5 @@
-## next [????.??.??]
+## 0.2.6 [2022.05.18]
+---------------------
 * Make the `IncCounterExperiment` benchmark compile with GHC 9.4.
 
 ## 0.2.5 [2021.02.17]
