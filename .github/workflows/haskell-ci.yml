@@ -261,6 +261,11 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
+      - name: constraint set measure-synchronize
+        run: |
+          $CABAL v2-build $ARG_COMPILER --enable-tests --enable-benchmarks --constraint='rcu +measure-synchronize' --dependencies-only -j2 all
+          $CABAL v2-build $ARG_COMPILER --enable-tests --enable-benchmarks --constraint='rcu +measure-synchronize' all
+          $CABAL v2-haddock $ARG_COMPILER --with-haddock $HADDOCK --enable-tests --enable-benchmarks --constraint='rcu +measure-synchronize' all
       - name: constraint set unstable
         run: |
           $CABAL v2-build $ARG_COMPILER --enable-tests --enable-benchmarks --constraint='rcu +unstable' --dependencies-only -j2 all

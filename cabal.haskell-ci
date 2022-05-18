@@ -12,3 +12,10 @@ constraint-set unstable
   run-tests:   True
   benchmarks:  True
   haddock:     True
+
+constraint-set measure-synchronize
+  constraints: rcu +measure-synchronize
+  tests:       True
+  run-tests:   True
+  benchmarks:  True
+  haddock:     True

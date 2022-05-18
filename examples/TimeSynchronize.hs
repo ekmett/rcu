@@ -77,9 +77,9 @@ writer :: Int -> WritingRCU s TimeT -> WritingRCU s TimeT
 writer n m = do
 #if MEASURE_SYNCHRONIZE
   helper n m timeZero
-  where helper 0  _ !acc = return acc
-        helper !n m !acc = do d <- m
-                              helper (pred n) m (acc + d)
+  where helper 0   _  !acc = return acc
+        helper !n' m' !acc = do d <- m'
+                                helper (pred n') m' (acc + d)
 #else
   replicateM_ n m
   return timeZero
@@ -191,7 +191,7 @@ main = do
   let aud = wtd / fromIntegral nUpdates
   putStrLn $ "average writer update time: " ++ show aud
 #if MEASURE_SYNCHRONIZE
-  putStrLn $ "average synchronize time: " ++ show wfrd
+  putStrLn $ "average synchronize time: " ++ show _wfrd
 #endif
   where opts = info optsParser
              ( fullDesc
