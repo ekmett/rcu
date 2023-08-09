@@ -1,5 +1,5 @@
-## next [????.??.??]
---------------------
+## 0.2.7 [2023.08.09]
+---------------------
 * Drop GHC 7.10 support and require GHC 8.0 or later to build.
 * Make the examples build warnings-free with GHC 9.8.
 
