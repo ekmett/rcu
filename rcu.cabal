@@ -11,8 +11,7 @@ homepage:      http://github.com/ekmett/rcu/
 bug-reports:   http://github.com/ekmett/rcu/issues
 copyright:     Copyright (C) 2015 Edward A. Kmett, Theodore Rhys Cooper
 build-type:    Simple
-tested-with:   GHC == 7.10.3
-             , GHC == 8.0.2
+tested-with:   GHC == 8.0.2
              , GHC == 8.2.2
              , GHC == 8.4.4
              , GHC == 8.6.5
@@ -49,7 +48,7 @@ flag measure-synchronize
 library
   build-depends:
     atomic-primops >= 0.8,
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     fail == 4.9.*,
     ghc-prim >= 0.3,
     parallel >= 3.2 && < 3.3,
@@ -128,7 +127,7 @@ benchmark TimeSynchronizeQSBR
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=QSBR -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -155,7 +154,7 @@ benchmark TimeSynchronizeGC
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=GC -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -182,7 +181,7 @@ benchmark TimeSynchronizeQSBRUnbound
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=QSBR -DBENCHMARKS -DUNBOUND
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -209,7 +208,7 @@ benchmark TimeSynchronizeGCUnbound
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=GC -DBENCHMARKS -DUNBOUND
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -236,7 +235,7 @@ benchmark TimeSynchronizeQSBRSingleThread
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=QSBR -DBENCHMARKS -DUNBOUND
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -263,7 +262,7 @@ benchmark TimeSynchronizeGCSingleThread
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=GC -DBENCHMARKS -DUNBOUND
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -290,7 +289,7 @@ benchmark TimeSynchronizeQSBRPinned
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=QSBR -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -317,7 +316,7 @@ benchmark TimeSynchronizeGCPinned
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=GC -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -344,7 +343,7 @@ benchmark TimeSynchronizeQSBRnoGC
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=QSBR -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -371,7 +370,7 @@ benchmark TimeSynchronizeGCnoGC
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=GC -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -398,7 +397,7 @@ benchmark TimeSynchronizeQSBRnoGCPinned
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=QSBR -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,
@@ -425,7 +424,7 @@ benchmark TimeSynchronizeGCnoGCPinned
   type: exitcode-stdio-1.0
   cpp-options: -DMODE=GC -DBENCHMARKS
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     containers >= 0.5,
     deepseq >= 1.4.1,
     ghc-prim >= 0.3,

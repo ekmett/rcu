@@ -1,3 +1,7 @@
+## next [????.??.??]
+--------------------
+* Drop GHC 7.10 support and require GHC 8.0 or later to build.
+
 ## 0.2.6 [2022.05.18]
 ---------------------
 * Make the `IncCounterExperiment` benchmark compile with GHC 9.4.
