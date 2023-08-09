@@ -5,7 +5,9 @@ module Main where
 import Control.Concurrent.RCU.MODE
 import Control.Concurrent.RCU.Class
 import Control.Monad (forM, forM_, replicateM)
-import Data.List (group, intercalate)
+import qualified Data.Foldable as F
+import Data.List (intercalate)
+import qualified Data.List.NonEmpty as NE
 import Prelude hiding (read)
 
 data List s a = Nil | Cons a (SRef s (List s a))
@@ -54,7 +56,7 @@ testList = do
   newSRef $ Cons 'A' c4
 
 compactShow :: (Show a, Eq a) => [a] -> String
-compactShow xs = intercalate ", " $ map (\xs' -> show (length xs') ++ " x " ++ show (head xs')) $ group xs
+compactShow xs = intercalate ", " $ map (\xs' -> show (F.length xs') ++ " x " ++ show (NE.head xs')) $ NE.group xs
 
 main :: IO ()
 main = do
