@@ -19,7 +19,7 @@ import Control.Monad.Primitive (primitive)
 import Criterion.Main (bench, bgroup, defaultMain, nfIO)
 import Data.Word (Word64)
 import Data.Primitive
-import GHC.Prim --(MutableByteArray, plusWord, readWord64Array, writeWord64Array)
+import GHC.Exts --(MutableByteArray, plusWord, readWord64Array, writeWord64Array)
 import GHC.Word (Word64 (W64#))
 
 -- | Counter for causal ordering.

@@ -1,1 +1,4 @@
 packages: .
+
+package rcu
+  ghc-options: -Werror=unused-packages
