@@ -112,7 +112,7 @@ benchmark IncCounterExperiment
   main-is: IncCounterExperiment.hs
   type: exitcode-stdio-1.0
   build-depends:
-    base,
+    base >= 4.9 && < 5,
     criterion >= 1.1,
     primitive
 
